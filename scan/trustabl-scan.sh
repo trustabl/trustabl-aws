@@ -86,23 +86,49 @@ curl -fSL -H "Accept: application/octet-stream" "${AUTH[@]}" \
   -o "$DEST/$ASSET" \
   "https://github.com/trustabl/trustabl/releases/download/${VER}/${ASSET}"
 
-# ---- verify checksum (sha256 against the release checksums.txt) ----
-if curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
-     "https://github.com/trustabl/trustabl/releases/download/${VER}/checksums.txt" 2>/dev/null; then
-  EXPECTED=$(grep " ${ASSET}\$" "$DEST/checksums.txt" | awk '{print $1}' | head -1)
-  if [ -n "$EXPECTED" ]; then
-    ACTUAL=$(sha256sum "$DEST/$ASSET" | awk '{print $1}')
-    if [ "$EXPECTED" != "$ACTUAL" ]; then
-      echo "Checksum mismatch for $ASSET: expected $EXPECTED, got $ACTUAL"
-      exit 1
-    fi
-    echo "checksum verified: $ASSET"
+# sha256sum is GNU coreutils; macOS ships BSD userland (shasum). Pick what exists.
+# Exit 2 (scanner error) if we cannot hash — never report that as a "mismatch".
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 "$1" | awk '{print $NF}'
   else
-    echo "WARNING: $ASSET not listed in checksums.txt — skipping verification"
+    echo "ERROR: no sha256 tool found (need sha256sum, shasum, or openssl)" >&2
+    return 1
   fi
-else
-  echo "WARNING: could not fetch checksums.txt — skipping verification"
+}
+
+# ---- verify checksum (sha256 against the release checksums.txt) ----
+# Fail closed: an unverified binary must not run. Missing checksums, an
+# unlisted asset, a hasher we cannot invoke, and a digest mismatch are all
+# scanner errors (exit 2) — not gate results (exit 1).
+if ! curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
+     "https://github.com/trustabl/trustabl/releases/download/${VER}/checksums.txt"; then
+  echo "ERROR: could not fetch checksums.txt — refusing to run an unverified binary" >&2
+  exit 2
 fi
+# Exact filename match (field 2), not a regex: $ASSET contains dots.
+# Allow sha256sum's binary-mode "*filename" as well as " filename".
+EXPECTED=$(awk -v a="$ASSET" '$2 == a || $2 == "*" a { print $1; exit }' "$DEST/checksums.txt")
+if [ -z "$EXPECTED" ]; then
+  echo "ERROR: $ASSET not listed in checksums.txt — refusing to run an unverified binary" >&2
+  exit 2
+fi
+if ! ACTUAL=$(sha256_of "$DEST/$ASSET"); then
+  exit 2
+fi
+if [ -z "$ACTUAL" ]; then
+  echo "ERROR: could not compute sha256 for $ASSET" >&2
+  exit 2
+fi
+if [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "Checksum mismatch for $ASSET: expected $EXPECTED, got $ACTUAL" >&2
+  exit 2
+fi
+echo "checksum verified: $ASSET"
 
 tar -xzf "$DEST/$ASSET" -C "$DEST"
 export PATH="$DEST:$PATH"
@@ -138,16 +164,25 @@ trustabl "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
 NATIVE_CODE=$?
 
 # Run 2: JSON (drives thresholds, log summary, dotenv).
-trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
+trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE"
+JSON_CODE=$?
 SCAN_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
+# A missing overall_score used to become 1.0 via `// 1` — readiness 100, risk 0.
+# That is a perfect-looking pass for a scan that produced no usable result.
+# Exit 2 (malfunction), not 1 (gate): do not write trustabl.env either.
+if ! jq -e 'type == "object" and (.overall_score | type == "number")' "$JSON_FILE" >/dev/null 2>&1; then
+  echo "trustabl produced no usable JSON ScanResult at '$JSON_FILE' (engine exit ${JSON_CODE:-$NATIVE_CODE}); refusing to report a score." >&2
+  exit 2
+fi
+
 # trustabl's overall_score is a float in [0.0, 1.0]; scale to [0,100] ints.
-RAW_SCORE=$(jq -r '.overall_score // 1' "$JSON_FILE")
+RAW_SCORE=$(jq -r '.overall_score' "$JSON_FILE")
 SCORE=$(awk -v s="$RAW_SCORE" 'BEGIN{ v = s*100; if (v<0) v=0; if (v>100) v=100; printf "%d", v + 0.5 }')
 RISK=$(( 100 - SCORE ))
-COUNT=$(jq -r '.findings | length // 0' "$JSON_FILE")
+COUNT=$(jq -r '(.findings // []) | length' "$JSON_FILE")
 MAX_SEV=$(jq -r '
-  [.findings[].severity] as $s
+  [.findings[]?.severity] as $s
   | if ($s|length)==0 then "none"
     elif any($s[]; .=="critical") then "critical"
     elif any($s[]; .=="high")     then "high"
@@ -238,9 +273,13 @@ printf '%b+%s+%s+%b\n' "$FG_CYA" "$DASH_L" "$DASH_R" "$RESET"
 printf '%b  Projected = estimate from trustabl'\''s own formula; listed fixes resolved, nothing new. Not a re-scan.%b\n' "$DIM" "$RESET"
 echo ""
 
-FAIL=0; REASONS=()
-if [ "$NATIVE_CODE" = "2" ]; then FAIL=1; REASONS+=("scanner error (exit 2)"); fi
+FAIL=0; REASONS=(); WRAPPER_EXIT=1
 if [ "$NATIVE_CODE" = "1" ]; then FAIL=1; REASONS+=("trustabl gated (medium+ or --strict)"); fi
+if [ "$NATIVE_CODE" != "0" ] && [ "$NATIVE_CODE" != "1" ]; then
+  FAIL=1
+  WRAPPER_EXIT=2
+  REASONS+=("scanner error (exit $NATIVE_CODE)")
+fi
 
 RST="$RISK_THRESHOLD"
 if [ "$RST" -gt 0 ] 2>/dev/null && [ "$RISK" -ge "$RST" ]; then
@@ -291,7 +330,7 @@ SUMMARY="trustabl-summary.md"
 if [ "$FAIL" = "1" ]; then
   printf '%b\n' "${RED}✗ Failed due to: ${REASONS[*]}${RESET}"
   echo "### ❌ Failed — ${REASONS[*]}" >> "$SUMMARY"
-  exit 1
+  exit "$WRAPPER_EXIT"
 fi
 
 printf '%b\n' "${GREEN}✓ Successfully passed scanning${RESET}"
