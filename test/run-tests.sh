@@ -157,6 +157,15 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+test_debug_does_not_echo_the_github_token() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" DEBUG=true GITHUB_TOKEN=ghp_TESTSECRETVALUE
+  assert_eq "exit code" "$SCAN_EXIT" 0
+  # set -x must still be tracing — otherwise this passes vacuously.
+  assert_contains "trace" "$SCAN_OUT" "+ "
+  assert_not_contains "trace" "$SCAN_OUT" "ghp_TESTSECRETVALUE"
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +183,6 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "DEBUG does not echo the GitHub token"                       test_debug_does_not_echo_the_github_token
 
 summarize
