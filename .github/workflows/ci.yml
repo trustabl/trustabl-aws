@@ -27,3 +27,21 @@ jobs:
           jq --version
       - name: Run the scanner test suite
         run: bash test/run-tests.sh
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The scanner is the product, and it is shell. shellcheck catches the
+      # class of defect that is invisible until a specific input hits it —
+      # unquoted expansions, a masked exit status, a read of an unset variable.
+      - name: Run shellcheck
+        run: |
+          shellcheck --version
+          shellcheck --severity=warning --shell=bash \
+            scan/trustabl-scan.sh \
+            test/run-tests.sh \
+            test/lib/harness.sh \
+            test/stubs/curl \
+            test/stubs/trustabl

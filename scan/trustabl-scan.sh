@@ -109,7 +109,6 @@ export PATH="$DEST:$PATH"
 
 # ---- scan ----
 set +e
-SCAN_START=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # Resolve the repo label (report box + summary).
 # Priority: explicit GitHub URL target -> target's git remote -> CodeBuild repo.
@@ -139,7 +138,6 @@ NATIVE_CODE=$?
 
 # Run 2: JSON (drives thresholds, log summary, dotenv).
 trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
-SCAN_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # trustabl's overall_score is a float in [0.0, 1.0]; scale to [0,100] ints.
 RAW_SCORE=$(jq -r '.overall_score // 1' "$JSON_FILE")

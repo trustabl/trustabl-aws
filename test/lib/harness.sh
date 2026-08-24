@@ -69,6 +69,9 @@ new_workspace() {
 
 # run_scan <workspace> [KEY=VALUE ...] runs the scanner in $workspace/work with
 # the stubs on PATH. It sets SCAN_EXIT and SCAN_OUT; it never aborts the caller.
+#
+# shellcheck disable=SC2034  # SCAN_OUT/SCAN_EXIT are read by the test functions
+# in run-tests.sh, which shellcheck analyses as a separate file.
 run_scan() {
   local ws="$1"; shift
   SCAN_OUT="$(
