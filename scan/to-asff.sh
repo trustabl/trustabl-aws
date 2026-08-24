@@ -53,20 +53,22 @@ jq --arg region "$REGION" \
      | if ($t | length) <= $n then $t else $t[0:$n-1] + "…" end;
    . as $root
    | ($root.findings // []) as $findings
-   | [ $findings[]?
+   | [ range(0; $findings | length) as $i
+       | $findings[$i]
        | . as $f
        | ($f.severity // $f.level // "info") as $sev
        | ($f.id // $f.rule_id // $f.check_id // $f.title // "finding") as $fid
        | ($f.title // $f.rule_id // $f.message // "Trustabl finding") as $title
        | ($f.message // $f.description // $f.title // "No description provided") as $desc
        | ($f.file // $f.path // $f.location.file // $f.location.uri // $resource) as $file
+       | ("Software and Configuration Checks/Code Analysis/Agent Reliability") as $type
        | {
            SchemaVersion: "2018-10-08",
-           Id: ("trustabl/" + ($fid | tostring) + "/" + ($file | tostring)),
+           Id: ("trustabl/" + ($i | tostring) + "/" + ($fid | tostring) + "/" + ($file | tostring)),
            ProductArn: $product,
            GeneratorId: $gen,
            AwsAccountId: $account,
-           Types: ["Software and Configuration Checks/Code Analysis/Agent Reliability"],
+           Types: [$type],
            CreatedAt: $now,
            UpdatedAt: $now,
            Severity: { Label: sev_label($sev) },
@@ -89,6 +91,10 @@ jq --arg region "$REGION" \
              "trustabl/rule": (($f.rule_id // $f.id // "") | tostring),
              "trustabl/tool": (($f.tool_name // $f.tool // "") | tostring),
              "trustabl/readiness": (($root.overall_score // "") | tostring)
+           },
+           FindingProviderFields: {
+             Severity: { Label: sev_label($sev), Original: ($sev | tostring) },
+             Types: [$type]
            }
          }
      ]

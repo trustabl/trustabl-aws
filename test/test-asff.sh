@@ -17,6 +17,7 @@ assert isinstance(findings, list), findings
 assert len(findings) == 3, len(findings)
 labels = {f["Severity"]["Label"] for f in findings}
 assert labels == {"CRITICAL", "MEDIUM", "INFORMATIONAL"}, labels
+ids = []
 for f in findings:
     assert f["SchemaVersion"] == "2018-10-08"
     assert f["Id"].startswith("trustabl/")
@@ -28,6 +29,11 @@ for f in findings:
     assert f["Resources"][0]["Type"] == "Other"
     assert len(f["Title"]) <= 256
     assert len(f["Description"]) <= 1024
+    assert "CVE" not in "".join(f["Types"])
+    assert f["FindingProviderFields"]["Types"] == f["Types"]
+    assert f["FindingProviderFields"]["Severity"]["Label"] == f["Severity"]["Label"]
+    ids.append(f["Id"])
+assert len(ids) == len(set(ids)), ids
 # info/META must not be labelled as a defect severity
 info = next(f for f in findings if "META" in f["Title"])
 assert info["Severity"]["Label"] == "INFORMATIONAL"
