@@ -105,6 +105,18 @@ else
 fi
 
 tar -xzf "$DEST/$ASSET" -C "$DEST"
+
+# Verifying the archive only matters if the binary that runs is the one that
+# came out of it. Without this check an archive missing `trustabl` — a renamed
+# asset, a truncated upload, a substituted tarball — leaves the name to resolve
+# against the rest of PATH, so the scan either fails with "command not found"
+# or, worse, silently runs some other trustabl the image happens to carry. The
+# checksum then attests to a file nobody executed.
+TRUSTABL_BIN="$DEST/trustabl"
+if [ ! -x "$TRUSTABL_BIN" ]; then
+  echo "$ASSET did not contain a trustabl binary; refusing to fall back to another one on PATH." >&2
+  exit 2
+fi
 export PATH="$DEST:$PATH"
 
 # ---- scan ----
@@ -134,11 +146,11 @@ BASE_ARGS=(scan "$TARGET")
 [ -n "$RULES_REF" ] && BASE_ARGS+=(--rules-ref "$RULES_REF")
 
 # Run 1: SARIF (file emit).
-trustabl "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
+"$TRUSTABL_BIN" "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
 NATIVE_CODE=$?
 
 # Run 2: JSON (drives thresholds, log summary, dotenv).
-trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
+"$TRUSTABL_BIN" "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
 SCAN_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # trustabl's overall_score is a float in [0.0, 1.0]; scale to [0,100] ints.

@@ -57,9 +57,11 @@ new_workspace() {
   asset="$(asset_name)"
   staging="$ws/staging"
   mkdir -p "$staging"
-  cp "$STUB_DIR/trustabl" "$staging/trustabl"
-  chmod +x "$staging/trustabl"
-  tar -czf "$ws/release/$asset" -C "$staging" trustabl
+  # RELEASE_BIN_NAME lets a test build an archive that does not contain the
+  # binary the scanner will look for.
+  cp "$STUB_DIR/trustabl" "$staging/${RELEASE_BIN_NAME:-trustabl}"
+  chmod +x "$staging/${RELEASE_BIN_NAME:-trustabl}"
+  tar -czf "$ws/release/$asset" -C "$staging" "${RELEASE_BIN_NAME:-trustabl}"
 
   printf '%s  %s\n' "$(sha256_of "$ws/release/$asset")" "$asset" > "$ws/release/checksums.txt"
   printf '{"tag_name":"%s"}\n' "$TEST_VERSION" > "$ws/release/latest"
