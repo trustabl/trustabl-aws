@@ -157,6 +157,25 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+test_a_missing_dependency_is_named() {
+  local ws bin; ws="$(workspace)"
+  # A PATH with the stubs and coreutils but no jq — the shape of a CodeBuild
+  # image where the buildspec's best-effort install did not land.
+  bin="$ws/nojq"; mkdir -p "$bin"
+  local t
+  for t in bash tar awk sed grep uname date env cat head mkdir printf seq tr sha256sum shasum dirname basename cp rm ls; do
+    command -v "$t" >/dev/null 2>&1 && ln -sf "$(command -v "$t")" "$bin/$t"
+  done
+  SCAN_OUT="$(cd "$ws/work" && env -i PATH="$STUB_DIR:$bin" HOME="$HOME" \
+      STUB_RELEASE_DIR="$ws/release" STUB_JSON="$FIXTURE_DIR/findings.json" \
+      STUB_SARIF="$FIXTURE_DIR/findings.sarif" VERSION="$TEST_VERSION" BRANCH=main \
+      bash "$SCANNER" 2>&1)"
+  SCAN_EXIT=$?
+  assert_eq "exit code" "$SCAN_EXIT" 2
+  assert_contains "message" "$SCAN_OUT" "jq"
+  assert_contains "message" "$SCAN_OUT" "required"
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +193,6 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "a missing dependency is named"                              test_a_missing_dependency_is_named
 
 summarize

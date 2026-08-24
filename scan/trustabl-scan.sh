@@ -38,6 +38,25 @@ export TRUSTABL_RULES_REPO="$RULES_REPO"
 AUTH=()
 [ -n "${GITHUB_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 
+# ---- preflight: the tools this script cannot run without ----
+# Every one of these is assumed silently further down, and a missing one does
+# not surface as a missing tool. Without jq the score reads 0 and the risk 100 —
+# a clean repo and an unusable environment produce the same "Readiness 0"
+# report, and the only clue is a `jq: command not found` line buried above it.
+#
+# The CodeBuild image documented in the READMEs carries all of these, but the
+# buildspec's install phase ends in `|| true`, so an image that does not is a
+# supported way to arrive here. Say which tool is missing, and stop.
+MISSING=""
+for tool in curl jq tar awk sed uname; do
+  command -v "$tool" >/dev/null 2>&1 || MISSING="$MISSING $tool"
+done
+if [ -n "$MISSING" ]; then
+  echo "Missing required tool(s):$MISSING" >&2
+  echo "Install them in the build image, or use one that ships them (e.g. aws/codebuild/standard:7.0)." >&2
+  exit 2
+fi
+
 # ---- resolve branch label ----
 # CodeBuild gives refs/heads/<branch> in CODEBUILD_WEBHOOK_HEAD_REF; CodeCatalyst
 # exposes none reliably, so fall back to git on the checkout.
