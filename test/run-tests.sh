@@ -157,6 +157,50 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+# scaled_readiness runs one scan whose ScanResult carries the given
+# overall_score and prints the readiness the scanner derived from it.
+scaled_readiness() {
+  local ws="$1" raw="$2"
+  jq --argjson s "$raw" '.overall_score = $s' "$FIXTURE_DIR/findings.json" > "$ws/scaled.json"
+  run_scan "$ws" STUB_JSON="$ws/scaled.json" >/dev/null
+  env_var "$ws" TRUSTABL_READINESS_SCORE
+}
+
+test_readiness_scaling_is_correct_across_the_range() {
+  local ws; ws="$(workspace)"
+  # overall_score is a float in [0,1]; readiness is it scaled to an integer
+  # percent, rounded half up. Boundaries and both rounding directions.
+  local cases="0:0 0.004:0 0.005:1 0.5:50 0.75:75 0.994:99 0.995:100 1:100"
+  local c raw want got
+  for c in $cases; do
+    raw="${c%%:*}"; want="${c##*:}"
+    got="$(scaled_readiness "$ws" "$raw")"
+    assert_eq "overall_score $raw" "$got" "$want"
+  done
+}
+
+test_readiness_is_clamped_to_0_100() {
+  local ws; ws="$(workspace)"
+  # The engine owns the [0,1] contract, but a clamp that silently inverts or
+  # overflows would publish a nonsense score, so both ends are pinned.
+  assert_eq "negative score clamps to 0"   "$(scaled_readiness "$ws" -0.5)" 0
+  assert_eq "score above 1 clamps to 100"  "$(scaled_readiness "$ws" 1.5)"  100
+}
+
+test_risk_is_always_the_complement_of_readiness() {
+  local ws; ws="$(workspace)"
+  local raw readiness risk
+  for raw in 0 0.005 0.331 0.5 0.789 0.995 1; do
+    scaled_readiness "$ws" "$raw" >/dev/null
+    readiness="$(env_var "$ws" TRUSTABL_READINESS_SCORE)"
+    risk="$(env_var "$ws" TRUSTABL_RISK_SCORE)"
+    assert_eq "readiness+risk at $raw" "$(( readiness + risk ))" 100
+    if [ "$readiness" -lt 0 ] || [ "$readiness" -gt 100 ]; then
+      fail "readiness $readiness out of range at overall_score $raw"
+    fi
+  done
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +218,8 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "readiness scaling is correct across the range"              test_readiness_scaling_is_correct_across_the_range
+it "readiness is clamped to 0-100"                              test_readiness_is_clamped_to_0_100
+it "risk is always the complement of readiness"                 test_risk_is_always_the_complement_of_readiness
 
 summarize
