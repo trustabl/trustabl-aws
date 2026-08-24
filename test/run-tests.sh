@@ -157,6 +157,37 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+test_an_unrecognized_severity_threshold_is_rejected() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" SEVERITY_THRESHOLD=High-ish STUB_CURL_LOG="$ws/curl.log"
+  assert_eq "exit code" "$SCAN_EXIT" 2
+  assert_contains "message" "$SCAN_OUT" "Invalid SEVERITY_THRESHOLD 'High-ish'"
+  assert_contains "message" "$SCAN_OUT" "none, info, low, medium, high, critical"
+  [ -f "$ws/curl.log" ] && fail "the release was downloaded despite invalid input"
+}
+
+test_a_severity_threshold_is_case_insensitive() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" SEVERITY_THRESHOLD=MEDIUM
+  assert_eq "exit code" "$SCAN_EXIT" 1
+  assert_contains "reason" "$SCAN_OUT" "max severity medium >= threshold medium"
+}
+
+test_a_non_numeric_risk_threshold_is_rejected() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" RISK_SCORE_THRESHOLD=high STUB_CURL_LOG="$ws/curl.log"
+  assert_eq "exit code" "$SCAN_EXIT" 2
+  assert_contains "message" "$SCAN_OUT" "Invalid RISK_SCORE_THRESHOLD 'high'"
+  [ -f "$ws/curl.log" ] && fail "the release was downloaded despite invalid input"
+}
+
+test_an_out_of_range_risk_threshold_is_rejected() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" RISK_SCORE_THRESHOLD=101
+  assert_eq "exit code" "$SCAN_EXIT" 2
+  assert_contains "message" "$SCAN_OUT" "out of range (0-100)"
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +205,9 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "an unrecognized SEVERITY_THRESHOLD is rejected"             test_an_unrecognized_severity_threshold_is_rejected
+it "SEVERITY_THRESHOLD is case-insensitive"                     test_a_severity_threshold_is_case_insensitive
+it "a non-numeric RISK_SCORE_THRESHOLD is rejected"             test_a_non_numeric_risk_threshold_is_rejected
+it "an out-of-range RISK_SCORE_THRESHOLD is rejected"           test_an_out_of_range_risk_threshold_is_rejected
 
 summarize

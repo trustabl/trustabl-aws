@@ -38,6 +38,29 @@ export TRUSTABL_RULES_REPO="$RULES_REPO"
 AUTH=()
 [ -n "${GITHUB_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 
+# ---- validate the gate inputs ----
+# A misconfigured gate must not be mistaken for a scan result. An unrecognized
+# severity ranks below every real one, so it would fail every build that found
+# anything; a non-numeric risk threshold is silently treated as 0, disabling the
+# gate the pipeline believes it configured. Both are configuration errors, so
+# they exit 2 — per docs/EVALUATION.md, the scan did not complete and its output
+# should not be trusted — and they do so before anything is downloaded.
+SEV_THRESHOLD=$(printf '%s' "$SEV_THRESHOLD" | tr '[:upper:]' '[:lower:]')
+case "$SEV_THRESHOLD" in
+  none|info|low|medium|high|critical) ;;
+  *) echo "Invalid SEVERITY_THRESHOLD '$SEVERITY_THRESHOLD' (want one of: none, info, low, medium, high, critical)" >&2
+     exit 2 ;;
+esac
+case "$RISK_THRESHOLD" in
+  ''|*[!0-9]*)
+     echo "Invalid RISK_SCORE_THRESHOLD '$RISK_SCORE_THRESHOLD' (want an integer in 0-100; 0 disables)" >&2
+     exit 2 ;;
+esac
+if [ "$RISK_THRESHOLD" -gt 100 ]; then
+  echo "RISK_SCORE_THRESHOLD $RISK_THRESHOLD out of range (0-100)" >&2
+  exit 2
+fi
+
 # ---- resolve branch label ----
 # CodeBuild gives refs/heads/<branch> in CODEBUILD_WEBHOOK_HEAD_REF; CodeCatalyst
 # exposes none reliably, so fall back to git on the checkout.

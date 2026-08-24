@@ -24,8 +24,8 @@ One scanner (`scan/trustabl-scan.sh`), two integrations:
 | `RULES_REPO` | _(default)_ | Override the `trustabl-rules` source repo. |
 | `SARIF_FILE` | `trustabl.sarif` | SARIF output path. |
 | `JSON_FILE` | `trustabl.json` | JSON ScanResult output path. |
-| `RISK_SCORE_THRESHOLD` | `0` | Fail when risk (100 − readiness) >= N. `0` disables. |
-| `SEVERITY_THRESHOLD` | `none` | Fail when any finding >= severity (`none/low/medium/high/critical`). |
+| `RISK_SCORE_THRESHOLD` | `0` | Fail when risk (100 − readiness) >= N, an integer in 0–100. `0` disables. |
+| `SEVERITY_THRESHOLD` | `none` | Fail when any finding >= severity (`none/info/low/medium/high/critical`, case-insensitive). |
 | `GITHUB_TOKEN` | _(none)_ | Optional — avoids GitHub's 60 req/hr anonymous rate limit. |
 
 ## Outputs
