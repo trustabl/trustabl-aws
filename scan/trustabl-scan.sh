@@ -133,12 +133,21 @@ BASE_ARGS=(scan "$TARGET")
 [ "$STRICT" = "true" ] && BASE_ARGS+=(--strict)
 [ -n "$RULES_REF" ] && BASE_ARGS+=(--rules-ref "$RULES_REF")
 
-# Run 1: SARIF (file emit).
-trustabl "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
-NATIVE_CODE=$?
-
-# Run 2: JSON (drives thresholds, log summary, dotenv).
-trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
+# One scan, both formats. --json-out/--sarif-out (engine >= v0.1.3) write each
+# format to a file independently of --format, so the SARIF artifact and the JSON
+# that drives the gate come from the same scan — and the source is only walked
+# once. Older engines advertise neither flag and take the two-run path, where
+# the SARIF run is the one whose exit code the gate reads.
+SCAN_HELP=$(trustabl scan --help 2>&1 || true)
+if printf '%s' "$SCAN_HELP" | grep -q -- '--json-out' &&
+   printf '%s' "$SCAN_HELP" | grep -q -- '--sarif-out'; then
+  trustabl "${BASE_ARGS[@]}" --json-out "$JSON_FILE" --sarif-out "$SARIF_FILE" >/dev/null
+  NATIVE_CODE=$?
+else
+  trustabl "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
+  NATIVE_CODE=$?
+  trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
+fi
 SCAN_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # trustabl's overall_score is a float in [0.0, 1.0]; scale to [0,100] ints.

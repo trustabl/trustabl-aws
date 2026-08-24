@@ -157,6 +157,37 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+# scans_in counts real scans in an argv log, ignoring the --help capability probe.
+scans_in() {
+  awk '/^scan / && !/--help/ { n++ } END { print n + 0 }' "$1"
+}
+
+test_a_modern_engine_is_scanned_once() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" STUB_ARGS_LOG="$ws/argv.log"
+  assert_eq "scan invocations" "$(scans_in "$ws/argv.log")" 1
+  assert_file "$ws/work/trustabl.json"
+  assert_file "$ws/work/trustabl.sarif"
+  assert_eq "readiness" "$(env_var "$ws" TRUSTABL_READINESS_SCORE)" 96
+  assert_eq "sarif artifact" "$(jq -r '.runs[0].results | length' "$ws/work/trustabl.sarif")" 3
+}
+
+test_an_older_engine_falls_back_to_two_scans() {
+  local ws; ws="$(workspace)"
+  # An engine before v0.1.3 advertises neither --json-out nor --sarif-out.
+  run_scan "$ws" STUB_NO_FILE_OUT=1 STUB_ARGS_LOG="$ws/argv.log"
+  assert_eq "scan invocations" "$(scans_in "$ws/argv.log")" 2
+  assert_eq "readiness" "$(env_var "$ws" TRUSTABL_READINESS_SCORE)" 96
+  assert_eq "sarif artifact" "$(jq -r '.runs[0].results | length' "$ws/work/trustabl.sarif")" 3
+}
+
+test_the_gate_uses_the_exit_code_of_the_scan_it_read() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws" STUB_EXIT=1
+  assert_eq "exit code" "$SCAN_EXIT" 1
+  assert_eq "native exit" "$(env_var "$ws" TRUSTABL_EXIT_CODE)" 1
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +205,8 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "a modern engine is scanned once"                            test_a_modern_engine_is_scanned_once
+it "an older engine falls back to two scans"                    test_an_older_engine_falls_back_to_two_scans
+it "the gate uses the exit code of the scan it read"            test_the_gate_uses_the_exit_code_of_the_scan_it_read
 
 summarize

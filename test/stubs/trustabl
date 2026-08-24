@@ -5,26 +5,49 @@
 #
 # Behavior is driven by the environment, so a test can pick the ScanResult the
 # engine "returns" and the exit code it returns it with:
-#   STUB_JSON       file whose contents answer --format json   (required)
-#   STUB_SARIF      file whose contents answer --format sarif   (required)
-#   STUB_EXIT       exit code for a scan                        (default 0)
-#   STUB_ARGS_LOG   append the argv of every invocation here    (optional)
+#   STUB_JSON          file whose contents answer JSON output   (required)
+#   STUB_SARIF         file whose contents answer SARIF output  (required)
+#   STUB_EXIT          exit code for a scan                     (default 0)
+#   STUB_ARGS_LOG      append the argv of every invocation here (optional)
+#   STUB_NO_FILE_OUT   drop --json-out/--sarif-out from the help text, so the
+#                      scanner sees an engine older than v0.1.3 (optional)
 
-set -euo pipefail
+set -uo pipefail
 
 [ -n "${STUB_ARGS_LOG:-}" ] && printf '%s\n' "$*" >> "$STUB_ARGS_LOG"
 
 case "${1:-}" in
   version) echo "Trustabl 0.0.0-stub"; exit 0 ;;
-  scan)    ;;
+  scan)    shift ;;
   *)       echo "stub trustabl: unsupported command ${1:-<none>}" >&2; exit 2 ;;
 esac
 
 format=human
-for i in "$@"; do
-  if [ "${prev:-}" = "--format" ]; then format="$i"; fi
-  prev="$i"
+json_out=""
+sarif_out=""
+help=false
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h)   help=true ;;
+    --format)    format="${2:-}"; shift ;;
+    --json-out)  json_out="${2:-}"; shift ;;
+    --sarif-out) sarif_out="${2:-}"; shift ;;
+  esac
+  shift
 done
+
+if [ "$help" = true ]; then
+  echo "Usage: trustabl scan [target] [flags]"
+  echo "      --format string      output format: human|json|sarif (default \"human\")"
+  if [ -z "${STUB_NO_FILE_OUT:-}" ]; then
+    echo "      --json-out string    also write the JSON ScanResult to this file"
+    echo "      --sarif-out string   also write the SARIF report to this file"
+  fi
+  exit 0
+fi
+
+[ -n "$json_out" ]  && cat "$STUB_JSON"  > "$json_out"
+[ -n "$sarif_out" ] && cat "$STUB_SARIF" > "$sarif_out"
 
 case "$format" in
   json)  cat "$STUB_JSON" ;;
