@@ -37,6 +37,7 @@ Actions:
             - trustabl.json
             - trustabl.sarif
             - trustabl-summary.md
+            - trustabl.env
       # Surfaces findings in the CodeCatalyst Reports tab.
       # NOTE: verify the SARIF report Format enum against current CodeCatalyst
       # docs before relying on it (the schema evolves).

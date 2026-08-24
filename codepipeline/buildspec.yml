@@ -37,3 +37,4 @@ artifacts:
     - trustabl.json
     - trustabl.sarif
     - trustabl-summary.md
+    - trustabl.env
