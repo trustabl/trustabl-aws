@@ -165,19 +165,21 @@ MAX_SEV=$(jq -r '
   echo "TRUSTABL_FINDINGS_COUNT=$COUNT"
 } > trustabl.env
 
-# ── Projected readiness (estimate — re-applies trustabl's own scoring) ──
-# Per-tool score = max(0, 1 - weighted/3); overall = min over tools;
-# per-finding weight = severityWeight*confidence. We re-apply that with
-# selected severities "resolved" to project headroom. NOT a re-scan.
-PROJ_JQ='
-  def sw($s): if $s=="critical" then 1.0 elif $s=="high" then 0.7 elif $s=="medium" then 0.4 elif $s=="low" then 0.15 else 0.05 end;
-  def removed($rm): reduce (.findings[]? | select(.severity as $s | $rm | index($s))) as $f ({}; .[$f.tool_name] = ((.[$f.tool_name] // 0) + (sw($f.severity) * $f.confidence)));
-  def projected($rm): removed($rm) as $r | [ .readiness[]? | (.weighted_severity - (($r[.tool_name]) // 0)) as $w | (if $w<0 then 0 else $w end) as $w2 | (1 - $w2/3.0) as $s | (if $s<0 then 0 else $s end) ] | (if length==0 then 1 else min end);
+# ── Projected readiness (the engine's own projection) ─────────
+# The engine owns scoring. projected_scores (engine >= v0.1.3) is the overall
+# score after cumulatively resolving findings at each severity tier; all we do
+# is scale its [0,1] floats to the 0-100 integers the report shows.
+#
+# Do not recompute this here. A second implementation of the scoring formula
+# drifts from the engine's the moment either side changes, and it cannot see the
+# inputs the engine scores on. Engines older than v0.1.3 omit the object; the
+# ladder then reports no headroom rather than guessing at one.
+read -r P_CRIT P_CH P_CHM P_CHML P_ALL < <(jq -r '
   def p100($x): ($x*100 + 0.5 | floor);
-  [ p100(projected(["critical"])), p100(projected(["critical","high"])), p100(projected(["critical","high","medium"])), p100(projected(["critical","high","medium","low"])), p100(projected(["critical","high","medium","low","info"])) ] | @tsv
-'
-read P_CRIT P_CH P_CHM P_CHML P_ALL < <(jq -r "$PROJ_JQ" "$JSON_FILE" 2>/dev/null | tr -d '\r')
-: "${P_CRIT:=$SCORE}"; : "${P_CH:=$SCORE}"; : "${P_CHM:=$SCORE}"; : "${P_CHML:=$SCORE}"; : "${P_ALL:=100}"
+  [ (.projected_scores // {}) | .fix_critical, .fix_high, .fix_medium, .fix_low, .fix_all ]
+  | if any(.[]; type != "number") then empty else map(p100(.)) | @tsv end
+' "$JSON_FILE" 2>/dev/null | tr -d '\r')
+: "${P_CRIT:=$SCORE}"; : "${P_CH:=$SCORE}"; : "${P_CHM:=$SCORE}"; : "${P_CHML:=$SCORE}"; : "${P_ALL:=$SCORE}"
 read SEV_CRIT SEV_HIGH SEV_MED SEV_LOW SEV_INFO < <(jq -r '[.findings[]?.severity] as $s | "\([$s[]|select(.=="critical")]|length)\t\([$s[]|select(.=="high")]|length)\t\([$s[]|select(.=="medium")]|length)\t\([$s[]|select(.=="low")]|length)\t\([$s[]|select(.=="info")]|length)"' "$JSON_FILE" 2>/dev/null | tr -d '\r')
 : "${SEV_CRIT:=0}"; : "${SEV_HIGH:=0}"; : "${SEV_MED:=0}"; : "${SEV_LOW:=0}"; : "${SEV_INFO:=0}"
 
@@ -235,7 +237,7 @@ cell "Findings"     "$BOLD" "$COUNT"
 cell "Max severity" "$(sev_color "$MAX_SEV")" "$MAX_SEV"
 cell "Native exit"  "$([ "$NATIVE_CODE" = "0" ] && printf '%s' "$FG_GRN" || printf '%s' "$FG_RED")" "$NATIVE_CODE"
 printf '%b+%s+%s+%b\n' "$FG_CYA" "$DASH_L" "$DASH_R" "$RESET"
-printf '%b  Projected = estimate from trustabl'\''s own formula; listed fixes resolved, nothing new. Not a re-scan.%b\n' "$DIM" "$RESET"
+printf '%b  Projected = the engine'\''s own projection with the listed fixes resolved, nothing new. Not a re-scan.%b\n' "$DIM" "$RESET"
 echo ""
 
 FAIL=0; REASONS=()

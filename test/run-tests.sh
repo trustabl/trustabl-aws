@@ -157,6 +157,30 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+test_the_headroom_ladder_comes_from_the_engine() {
+  local ws; ws="$(workspace)"
+  run_scan "$ws"
+  local report; report="$(printf '%s\n' "$SCAN_OUT" | strip_ansi)"
+  # findings.json carries the engine's own projected_scores:
+  #   fix_critical .9588  fix_high .9588  fix_medium .98428  fix_low 1  fix_all 1
+  # which scale to 96 / 96 / 98 / 100 / 100 against a readiness of 96.
+  assert_contains "fix critical row" "$report" "96 -> 96  (+0)"
+  assert_contains "fix medium row"   "$report" "96 -> 98  (+2)"
+  assert_contains "fix low row"      "$report" "98 -> 100  (+2)"
+  assert_contains "fix info row"     "$report" "100 -> 100  (+0)"
+}
+
+test_the_headroom_ladder_is_flat_without_engine_projections() {
+  local ws; ws="$(workspace)"
+  # An engine older than v0.1.3 emits no projected_scores. The ladder must then
+  # show no headroom rather than inventing a projection.
+  jq 'del(.projected_scores)' "$FIXTURE_DIR/findings.json" > "$ws/no-projections.json"
+  run_scan "$ws" STUB_JSON="$ws/no-projections.json"
+  local report; report="$(printf '%s\n' "$SCAN_OUT" | strip_ansi)"
+  assert_contains "readiness header" "$report" "Readiness  96 -> 96  (+0)"
+  assert_contains "fix info row"     "$report" "96 -> 96  (+0)"
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +198,7 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "the headroom ladder comes from the engine"                  test_the_headroom_ladder_comes_from_the_engine
+it "the headroom ladder is flat without engine projections"     test_the_headroom_ladder_is_flat_without_engine_projections
 
 summarize
