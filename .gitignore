@@ -3,6 +3,7 @@ trustabl.json
 trustabl.sarif
 trustabl-summary.md
 trustabl.env
+trustabl.asff.json
 .trustabl-bin/
 trustabl/
 # Claude tooling

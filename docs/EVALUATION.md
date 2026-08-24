@@ -136,18 +136,22 @@ Vendor `scan/` plus the config for your platform into your repo, then set
 variables on the CodeBuild project or CodeCatalyst workflow:
 
 ```yaml
-SEVERITY_THRESHOLD: high             # report-only: omit this
+REPORT_ONLY: "true"                  # step 1: artifacts only; scanner errors still fail
+SEVERITY_THRESHOLD: high             # step 4: turn gating on
 ```
 
 Variables are **UPPER_SNAKE**: `SEVERITY_THRESHOLD`, `RISK_SCORE_THRESHOLD`,
-`STRICT`, `DETECTORS`, `VERSION`.
+`STRICT`, `DETECTORS`, `VERSION`, `REPORT_ONLY`, `SECURITY_HUB`.
+
+Do not use `|| true` around the scan to get report-only behaviour. That also
+swallows exit 2 (scanner/I/O failure), and those results must not be trusted.
 
 ## Where the results appear
 
 | Surface | What you get |
 |---|---|
 | **Build log** | The readiness panel |
-| **Artifacts** | `trustabl.json`, `trustabl.sarif`, `trustabl-summary.md`, `trustabl.env` |
+| **Artifacts** | `trustabl.json`, `trustabl.sarif`, `trustabl-summary.md`, `trustabl.env`, `trustabl.asff.json` |
 | **CodeCatalyst Reports tab** | SARIF report, when configured in the workflow |
 
 A gate failure exits non-zero, which fails the CodeBuild action and therefore the
@@ -156,5 +160,6 @@ pipeline stage.
 `trustabl.env` exposes `TRUSTABL_EXIT_CODE`, `TRUSTABL_READINESS_SCORE`,
 `TRUSTABL_RISK_SCORE` and `TRUSTABL_MAX_SEVERITY` for downstream steps.
 
-For a trial, run the CodeBuild project on its own before wiring it into a
-pipeline. It exercises the same scan without gating anything real.
+For a trial, set `REPORT_ONLY=true` and run the CodeBuild project on its own
+before wiring it into a pipeline. That exercises the same scan without gating
+a real stage, while still failing if the scanner itself errors.

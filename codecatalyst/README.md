@@ -41,9 +41,9 @@ The workflow triggers on push to `main`. CodeCatalyst → your project →
 `trustabl.sarif` / `trustabl-summary.md`, surfaces findings in the **Reports**
 tab (SARIF), and **fails the run on any medium-or-higher finding**.
 
-> **Report-only (don't block)?** trustabl fails on medium+ by default. To make
-> it advisory, change the workflow `Run:` line to:
-> `- Run: bash scan/trustabl-scan.sh || true`
+> **Report-only (don't block)?** Set `REPORT_ONLY=true` in the workflow
+> Variables. That publishes artifacts and still fails on scanner errors
+> (exit 2). Do not use `|| true` — that also swallows a dead scanner.
 
 ### CLI?
 CodeCatalyst workflows are **file-driven** — there's no separate CLI to create

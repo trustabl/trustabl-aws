@@ -1,0 +1,29 @@
+{
+  "overall_score": 0.42,
+  "findings": [
+    {
+      "id": "TOOL-001",
+      "rule_id": "TOOL-001",
+      "severity": "critical",
+      "title": "Unsandboxed shell tool",
+      "message": "Agent tool runs a caller-controlled shell command.",
+      "fix": "Constrain the argv and drop the raw shell.",
+      "file": "src/tools/shell.py",
+      "tool_name": "run_shell"
+    },
+    {
+      "id": "MCP-007",
+      "severity": "medium",
+      "title": "Caller-controlled URL fetch",
+      "message": "MCP tool fetches a URL from the prompt.",
+      "file": "src/mcp/fetch.ts",
+      "tool_name": "fetch_url"
+    },
+    {
+      "severity": "info",
+      "title": "META: SDK not fully inventoried",
+      "message": "Dynamic agent construction skipped.",
+      "file": "src/agent.py"
+    }
+  ]
+}

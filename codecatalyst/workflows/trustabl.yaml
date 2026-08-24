@@ -27,6 +27,8 @@ Actions:
           Value: "none"
         - Name: RISK_SCORE_THRESHOLD
           Value: "0"
+        - Name: REPORT_ONLY
+          Value: "false"
     Configuration:
       Steps:
         - Run: bash scan/trustabl-scan.sh
@@ -37,6 +39,8 @@ Actions:
             - trustabl.json
             - trustabl.sarif
             - trustabl-summary.md
+            - trustabl.env
+            - trustabl.asff.json
       # Surfaces findings in the CodeCatalyst Reports tab.
       # NOTE: verify the SARIF report Format enum against current CodeCatalyst
       # docs before relying on it (the schema evolves).
