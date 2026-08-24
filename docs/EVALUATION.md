@@ -136,7 +136,7 @@ Vendor `scan/` plus the config for your platform into your repo, then set
 variables on the CodeBuild project or CodeCatalyst workflow:
 
 ```yaml
-SEVERITY_THRESHOLD: high             # report-only: omit this
+SEVERITY_THRESHOLD: high             # start here; omit = still fail on medium+
 ```
 
 Variables are **UPPER_SNAKE**: `SEVERITY_THRESHOLD`, `RISK_SCORE_THRESHOLD`,
@@ -157,4 +157,6 @@ pipeline stage.
 `TRUSTABL_RISK_SCORE` and `TRUSTABL_MAX_SEVERITY` for downstream steps.
 
 For a trial, run the CodeBuild project on its own before wiring it into a
-pipeline. It exercises the same scan without gating anything real.
+pipeline. The project itself still gates (a medium+ finding fails the build);
+the pipeline stage just is not in the path yet. A true report-only run wraps
+the scanner with `|| true`, as the CodePipeline README describes.
