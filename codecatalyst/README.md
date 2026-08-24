@@ -53,5 +53,6 @@ console (CodeCatalyst has no standalone scan CLI like CodeBuild).
 
 **Notes**
 - Linux build image only.
-- The SARIF report `Format` enum (`SARIFSCA`) — verify against current
-  CodeCatalyst docs; the schema evolves.
+- The SARIF report `Format` is `SARIFSA`, CodeCatalyst's static-analysis report
+  type. `SARIFSCA` is the software-composition-analysis type and is for
+  dependency findings, which this workflow does not produce.
