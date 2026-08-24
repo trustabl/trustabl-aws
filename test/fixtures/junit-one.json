@@ -1,0 +1,21 @@
+{
+  "scan_id": "one",
+  "repo": "demo/one",
+  "overall_score": 0.8,
+  "findings": [
+    {
+      "rule_id": "TOOL-001",
+      "category": "openai_sdk",
+      "scope": "tool",
+      "severity": "medium",
+      "tool_name": "run_shell",
+      "file_path": "src/tools/shell.py",
+      "start_line": 12,
+      "end_line": 18,
+      "title": "Unsandboxed shell tool",
+      "explanation": "Agent tool runs a caller-controlled shell command.",
+      "suggested_fix": "Constrain the argv.",
+      "confidence": 0.91
+    }
+  ]
+}

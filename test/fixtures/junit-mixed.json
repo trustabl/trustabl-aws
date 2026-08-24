@@ -1,0 +1,77 @@
+{
+  "scan_id": "mixed",
+  "repo": "demo/repo",
+  "overall_score": 0.42,
+  "findings": [
+    {
+      "rule_id": "META-002",
+      "category": "openai_sdk",
+      "scope": "repo",
+      "severity": "info",
+      "tool_name": "",
+      "file_path": "src/agent.py",
+      "start_line": 1,
+      "end_line": 1,
+      "title": "META: SDK not fully inventoried",
+      "explanation": "Dynamic agent construction skipped.",
+      "suggested_fix": "",
+      "confidence": 1
+    },
+    {
+      "rule_id": "TOOL-001",
+      "category": "openai_sdk",
+      "scope": "tool",
+      "severity": "critical",
+      "tool_name": "run_shell",
+      "file_path": "src/tools/shell.py",
+      "start_line": 12,
+      "end_line": 18,
+      "title": "Unsandboxed shell tool",
+      "explanation": "Agent tool runs a caller-controlled shell command.",
+      "suggested_fix": "Constrain the argv and drop the raw shell.",
+      "confidence": 0.91
+    },
+    {
+      "rule_id": "MCP-007",
+      "category": "mcp",
+      "scope": "tool",
+      "severity": "medium",
+      "tool_name": "fetch_url",
+      "file_path": "src/mcp/fetch.ts",
+      "start_line": 40,
+      "end_line": 40,
+      "title": "Caller-controlled URL fetch",
+      "explanation": "MCP tool fetches a URL from the prompt.",
+      "suggested_fix": "Allowlist destinations and pin the scheme.",
+      "confidence": 0.8
+    },
+    {
+      "rule_id": "TOOL-LOW",
+      "category": "claude_sdk",
+      "scope": "tool",
+      "severity": "low",
+      "tool_name": "note",
+      "file_path": "src/notes.py",
+      "start_line": 3,
+      "end_line": 3,
+      "title": "Missing timeout",
+      "explanation": "No turn budget on the agent session.",
+      "suggested_fix": "Set max_turns.",
+      "confidence": 0.4
+    },
+    {
+      "rule_id": "TOOL-HIGH",
+      "category": "google_adk",
+      "scope": "agent",
+      "severity": "high",
+      "tool_name": "planner",
+      "file_path": "src/agent.py",
+      "start_line": 80,
+      "end_line": 90,
+      "title": "Unconstrained handoff",
+      "explanation": "Handoff target is taken from the model.",
+      "suggested_fix": "Allowlist handoff agents.",
+      "confidence": 0.7
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TrustablCodeBuildReports",
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:CreateReportGroup",
+        "codebuild:CreateReport",
+        "codebuild:UpdateReport",
+        "codebuild:BatchPutTestCases"
+      ],
+      "Resource": "arn:aws:codebuild:<region>:<account-id>:report-group/<project-name>-trustabl-findings"
+    }
+  ]
+}

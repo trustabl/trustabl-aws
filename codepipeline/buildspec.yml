@@ -11,9 +11,15 @@ version: 0.2
 #
 # Inputs are environment variables (set on the CodeBuild project or action):
 #   TARGET (default "."), VERSION (default "latest"), DETECTORS, STRICT,
-#   RULES_REF, RULES_REPO, SARIF_FILE, JSON_FILE,
+#   RULES_REF, RULES_REPO, SARIF_FILE, JSON_FILE, JUNIT_FILE,
 #   RISK_SCORE_THRESHOLD (default 0), SEVERITY_THRESHOLD (default none),
 #   GITHUB_TOKEN (optional — dodges GitHub's 60 req/hr anon rate limit).
+#
+# CodeBuild Reports (opt-in): the scanner always writes trustabl-junit.xml.
+# Uncomment the `reports:` block below AND attach codepipeline/iam-reports.json
+# (or the equivalent actions) to the CodeBuild service role. Leaving `reports:`
+# commented keeps the logs-only CLI role working. Reports do not change the
+# Trustabl gate — that is still the scanner's exit code.
 
 env:
   variables:
@@ -37,3 +43,13 @@ artifacts:
     - trustabl.json
     - trustabl.sarif
     - trustabl-summary.md
+    - trustabl-junit.xml
+
+# Opt-in: native CodeBuild Reports tab (JUnit). Requires extra IAM — see
+# codepipeline/README.md and codepipeline/iam-reports.json. Auto-created
+# report group name is <project>-trustabl-findings.
+# reports:
+#   trustabl-findings:
+#     files:
+#       - trustabl-junit.xml
+#     file-format: JUNITXML

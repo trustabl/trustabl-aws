@@ -4,7 +4,8 @@
 #
 # Downloads the upstream `trustabl` release binary (sha256-verified against the
 # release checksums.txt), scans the source, prints a colored readiness report,
-# emits trustabl.json + trustabl.sarif + trustabl-summary.md + trustabl.env, and
+# emits trustabl.json + trustabl.sarif + trustabl-summary.md + trustabl.env +
+# trustabl-junit.xml, and
 # gates on RISK_SCORE_THRESHOLD / SEVERITY_THRESHOLD.
 #
 # Ported from the GitLab CI/CD component scanner (same scan/score/report logic);
@@ -12,7 +13,7 @@
 #
 # Inputs are environment variables (all optional; sensible defaults):
 #   TARGET VERSION DETECTORS STRICT RULES_REF RULES_REPO
-#   SARIF_FILE JSON_FILE RISK_SCORE_THRESHOLD SEVERITY_THRESHOLD
+#   SARIF_FILE JSON_FILE JUNIT_FILE RISK_SCORE_THRESHOLD SEVERITY_THRESHOLD
 #   BRANCH GITHUB_TOKEN DEBUG
 
 # ---- inputs (env, with defaults) ----
@@ -24,6 +25,7 @@ RULES_REF="${RULES_REF:-}"
 RULES_REPO="${RULES_REPO:-}"
 SARIF_FILE="${SARIF_FILE:-trustabl.sarif}"
 JSON_FILE="${JSON_FILE:-trustabl.json}"
+JUNIT_FILE="${JUNIT_FILE:-trustabl-junit.xml}"
 RISK_THRESHOLD="${RISK_SCORE_THRESHOLD:-0}"
 SEV_THRESHOLD="${SEVERITY_THRESHOLD:-none}"
 BRANCH_INPUT="${BRANCH:-}"
@@ -164,6 +166,14 @@ MAX_SEV=$(jq -r '
   echo "TRUSTABL_MAX_SEVERITY=$MAX_SEV"
   echo "TRUSTABL_FINDINGS_COUNT=$COUNT"
 } > trustabl.env
+
+# CodeBuild Reports (opt-in via buildspec `reports:`). Conversion is local and
+# does not change the gate; a converter error is logged, not a gate result.
+JUNIT_SCRIPT="$(cd "$(dirname "$0")" && pwd)/to-junit.sh"
+if [ -f "$JSON_FILE" ] && [ -f "$JUNIT_SCRIPT" ]; then
+  bash "$JUNIT_SCRIPT" "$JSON_FILE" "$JUNIT_FILE" \
+    || echo "WARNING: JUnit conversion failed — CodeBuild Reports will be empty" >&2
+fi
 
 # ── Projected readiness (estimate — re-applies trustabl's own scoring) ──
 # Per-tool score = max(0, 1 - weighted/3); overall = min over tools;

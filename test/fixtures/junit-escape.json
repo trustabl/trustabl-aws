@@ -1,0 +1,25 @@
+{
+  "scan_id": "escape",
+  "repo": "demo/escape",
+  "overall_score": 0.5,
+  "findings": [
+    {
+      "rule_id": "ESC-001",
+      "category": "mcp",
+      "scope": "tool",
+      "severity": "high",
+      "tool_name": "echo & greet",
+      "file_path": "weird/path with spaces & <x>/file.py",
+      "start_line": 7,
+      "end_line": 9,
+      "title": "Quotes \"and\" ampersands & angles <tag> and it's done",
+      "explanation": "line1\nline2 with A & B and a <script>alert(1)</script> and He said \"hi\" and it's fine",
+      "suggested_fix": "fix line 1\nfix line 2 & done",
+      "confidence": 0.5
+    },
+    {
+      "rule_id": "MISSING-1",
+      "severity": "low"
+    }
+  ]
+}

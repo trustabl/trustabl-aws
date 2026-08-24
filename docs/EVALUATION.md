@@ -147,7 +147,8 @@ Variables are **UPPER_SNAKE**: `SEVERITY_THRESHOLD`, `RISK_SCORE_THRESHOLD`,
 | Surface | What you get |
 |---|---|
 | **Build log** | The readiness panel |
-| **Artifacts** | `trustabl.json`, `trustabl.sarif`, `trustabl-summary.md`, `trustabl.env` |
+| **Artifacts** | `trustabl.json`, `trustabl.sarif`, `trustabl-summary.md`, `trustabl.env`, `trustabl-junit.xml` |
+| **CodeBuild Reports tab** | JUnit test cases (opt-in `reports:` + report-group IAM; see [codepipeline/README.md](../codepipeline/README.md)) |
 | **CodeCatalyst Reports tab** | SARIF report, when configured in the workflow |
 
 A gate failure exits non-zero, which fails the CodeBuild action and therefore the
