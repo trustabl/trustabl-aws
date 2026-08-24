@@ -30,6 +30,14 @@ BRANCH_INPUT="${BRANCH:-}"
 [ "${DEBUG:-false}" = "true" ] && set -x
 
 set -e
+
+# Run 1 (SARIF) and Run 2 (JSON) below each `>` into their own file; a
+# collision means the second write silently clobbers the first, corrupting
+# whichever artifact got overwritten without either run reporting an error.
+if [ "$SARIF_FILE" = "$JSON_FILE" ]; then
+  echo "ERROR: SARIF_FILE and JSON_FILE both resolve to '$SARIF_FILE' — refusing to let one overwrite the other" >&2
+  exit 2
+fi
 # trustabl reads TRUSTABL_RULES_REPO from the env (empty = its default).
 export TRUSTABL_RULES_REPO="$RULES_REPO"
 
