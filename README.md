@@ -26,7 +26,14 @@ One scanner (`scan/trustabl-scan.sh`), two integrations:
 | `JSON_FILE` | `trustabl.json` | JSON ScanResult output path. |
 | `RISK_SCORE_THRESHOLD` | `0` | Fail when risk (100 − readiness) >= N. `0` disables. |
 | `SEVERITY_THRESHOLD` | `none` | Fail when any finding >= severity (`none/low/medium/high/critical`). |
+| `BRANCH` | _(detected)_ | Branch label for the report. Detected from `CODEBUILD_WEBHOOK_HEAD_REF`, else the checkout's git refs, else `unknown` — set it where neither applies (CodeCatalyst exposes no reliable branch variable). |
 | `GITHUB_TOKEN` | _(none)_ | Optional — avoids GitHub's 60 req/hr anonymous rate limit. |
+| `DEBUG` | `false` | `true` runs the scanner under `set -x`. Every command is echoed, so keep it off unless diagnosing — see the note below. |
+
+> **`DEBUG=true` echoes every command, including the `curl` calls that carry
+> `GITHUB_TOKEN` in an `Authorization` header.** CodeBuild and CodeCatalyst logs
+> are readable by anyone with access to the project, so turn it off again once
+> you have what you need, and prefer a token you can rotate.
 
 ## Outputs
 
