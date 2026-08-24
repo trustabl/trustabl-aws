@@ -27,6 +27,9 @@ JSON_FILE="${JSON_FILE:-trustabl.json}"
 RISK_THRESHOLD="${RISK_SCORE_THRESHOLD:-0}"
 SEV_THRESHOLD="${SEVERITY_THRESHOLD:-none}"
 BRANCH_INPUT="${BRANCH:-}"
+# Fail closed if the release binary cannot be sha256-verified. Set to "true"
+# only for a release that genuinely ships no checksums.txt (accepts the risk).
+ALLOW_UNVERIFIED_DOWNLOAD="${ALLOW_UNVERIFIED_DOWNLOAD:-false}"
 [ "${DEBUG:-false}" = "true" ] && set -x
 
 set -e
@@ -87,6 +90,18 @@ curl -fSL -H "Accept: application/octet-stream" "${AUTH[@]}" \
   "https://github.com/trustabl/trustabl/releases/download/${VER}/${ASSET}"
 
 # ---- verify checksum (sha256 against the release checksums.txt) ----
+# Fail closed: an unverifiable binary is not run unless the operator explicitly
+# opts out with ALLOW_UNVERIFIED_DOWNLOAD=true. Silently proceeding would run an
+# unauthenticated download and report a score from it.
+unverified() {
+  if [ "$ALLOW_UNVERIFIED_DOWNLOAD" = "true" ]; then
+    echo "WARNING: $1 — proceeding because ALLOW_UNVERIFIED_DOWNLOAD=true"
+  else
+    echo "ERROR: $1 — refusing to run an unverified binary."
+    echo "Pin a VERSION with a published checksums.txt, or set ALLOW_UNVERIFIED_DOWNLOAD=true to override."
+    exit 1
+  fi
+}
 if curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
      "https://github.com/trustabl/trustabl/releases/download/${VER}/checksums.txt" 2>/dev/null; then
   EXPECTED=$(grep " ${ASSET}\$" "$DEST/checksums.txt" | awk '{print $1}' | head -1)
@@ -98,10 +113,10 @@ if curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
     fi
     echo "checksum verified: $ASSET"
   else
-    echo "WARNING: $ASSET not listed in checksums.txt — skipping verification"
+    unverified "$ASSET not listed in checksums.txt"
   fi
 else
-  echo "WARNING: could not fetch checksums.txt — skipping verification"
+  unverified "could not fetch checksums.txt"
 fi
 
 tar -xzf "$DEST/$ASSET" -C "$DEST"
@@ -142,7 +157,16 @@ trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
 SCAN_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # trustabl's overall_score is a float in [0.0, 1.0]; scale to [0,100] ints.
-RAW_SCORE=$(jq -r '.overall_score // 1' "$JSON_FILE")
+# Fail closed: a missing/malformed score means the scan produced no usable
+# result (truncated JSON, scanner error). Defaulting it to a passing value would
+# read a broken run as a clean repo, so treat absence as a scanner error (exit 2)
+# — matching the exit-code contract in docs/EVALUATION.md.
+RAW_SCORE=$(jq -r '.overall_score' "$JSON_FILE" 2>/dev/null)
+if [ -z "$RAW_SCORE" ] || [ "$RAW_SCORE" = "null" ]; then
+  echo "ERROR: no usable overall_score in $JSON_FILE (empty, truncated, or malformed scan output)."
+  echo "The scan did not produce a trustworthy result; failing closed (exit 2)."
+  exit 2
+fi
 SCORE=$(awk -v s="$RAW_SCORE" 'BEGIN{ v = s*100; if (v<0) v=0; if (v>100) v=100; printf "%d", v + 0.5 }')
 RISK=$(( 100 - SCORE ))
 COUNT=$(jq -r '.findings | length // 0' "$JSON_FILE")
