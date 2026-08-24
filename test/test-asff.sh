@@ -37,6 +37,11 @@ assert len(ids) == len(set(ids)), ids
 # info/META must not be labelled as a defect severity
 info = next(f for f in findings if "META" in f["Title"])
 assert info["Severity"]["Label"] == "INFORMATIONAL"
+shell = next(f for f in findings if f["Id"].endswith("src/tools/shell.py"))
+assert "caller-controlled shell" in shell["Description"]
+assert "Constrain the argv" in shell["Remediation"]["Recommendation"]["Text"]
+assert shell["Resources"][0]["Id"] == "src/tools/shell.py"
+assert shell["ProductFields"]["trustabl/rule"] == "TOOL-001"
 print("ok: 3 findings, severity mapping, ASFF shape")
 PY
 

@@ -57,10 +57,10 @@ jq --arg region "$REGION" \
        | $findings[$i]
        | . as $f
        | ($f.severity // $f.level // "info") as $sev
-       | ($f.id // $f.rule_id // $f.check_id // $f.title // "finding") as $fid
+       | ($f.rule_id // $f.id // $f.check_id // $f.title // "finding") as $fid
        | ($f.title // $f.rule_id // $f.message // "Trustabl finding") as $title
-       | ($f.message // $f.description // $f.title // "No description provided") as $desc
-       | ($f.file // $f.path // $f.location.file // $f.location.uri // $resource) as $file
+       | ($f.explanation // $f.message // $f.description // $f.title // "No description provided") as $desc
+       | ($f.file_path // $f.file // $f.path // $f.location.file // $f.location.uri // $resource) as $file
        | ("Software and Configuration Checks/Code Analysis/Agent Reliability") as $type
        | {
            SchemaVersion: "2018-10-08",
@@ -76,7 +76,7 @@ jq --arg region "$REGION" \
            Description: clip($desc; 1024),
            Remediation: {
              Recommendation: {
-               Text: clip(($f.fix // $f.remediation // $f.suggestion // "See the Trustabl finding for the suggested fix."); 512)
+               Text: clip(($f.suggested_fix // $f.fix // $f.remediation // $f.suggestion // "See the Trustabl finding for the suggested fix."); 512)
              }
            },
            Resources: [
