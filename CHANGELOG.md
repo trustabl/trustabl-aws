@@ -16,11 +16,6 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `securityhub:BatchImportFindings`.
 - Offline tests for the ASFF converter (`test/test-asff.sh`).
 
-### Fixed
-
-- CodeBuild install no longer continues if `jq` or `curl` cannot be installed,
-  which previously produced empty reports that looked like a clean scan.
-
 
 ## [0.1.0] — 2026-06-17
 
