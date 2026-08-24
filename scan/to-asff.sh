@@ -66,7 +66,7 @@ jq --arg region "$REGION" \
            ProductArn: $product,
            GeneratorId: $gen,
            AwsAccountId: $account,
-           Types: ["Software and Configuration Checks/Vulnerabilities/CVE"],
+           Types: ["Software and Configuration Checks/Code Analysis/Agent Reliability"],
            CreatedAt: $now,
            UpdatedAt: $now,
            Severity: { Label: sev_label($sev) },

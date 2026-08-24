@@ -35,10 +35,6 @@ phases:
   build:
     commands:
       - bash "$CODEBUILD_SRC_DIR/scan/trustabl-scan.sh"
-      - |
-        if [ "${SECURITY_HUB:-false}" = "true" ]; then
-          bash "$CODEBUILD_SRC_DIR/scan/to-asff.sh" --import "${JSON_FILE:-trustabl.json}" trustabl.asff.json
-        fi
 
 artifacts:
   name: trustabl-scan-results

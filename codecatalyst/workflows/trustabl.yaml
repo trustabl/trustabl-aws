@@ -29,6 +29,8 @@ Actions:
           Value: "0"
         - Name: REPORT_ONLY
           Value: "false"
+        - Name: SECURITY_HUB
+          Value: "false"
     Configuration:
       Steps:
         - Run: bash scan/trustabl-scan.sh

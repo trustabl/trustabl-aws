@@ -28,6 +28,7 @@ RISK_THRESHOLD="${RISK_SCORE_THRESHOLD:-0}"
 SEV_THRESHOLD="${SEVERITY_THRESHOLD:-none}"
 BRANCH_INPUT="${BRANCH:-}"
 REPORT_ONLY="${REPORT_ONLY:-false}"
+SECURITY_HUB="${SECURITY_HUB:-false}"
 [ "${DEBUG:-false}" = "true" ] && set -x
 
 set -e
@@ -297,11 +298,15 @@ SUMMARY="trustabl-summary.md"
   echo ""
 } >> "$SUMMARY"
 
-# Always emit ASFF next to the other artifacts so a later CodeBuild step
-# (or SECURITY_HUB=true) can import without re-scanning.
+# Always emit ASFF next to the other artifacts. SECURITY_HUB=true also
+# batch-imports; that path is fail-closed (missing aws CLI, IAM, or Hub).
 ASFF_SCRIPT="$(cd "$(dirname "$0")" && pwd)/to-asff.sh"
 if [ -x "$ASFF_SCRIPT" ] || [ -f "$ASFF_SCRIPT" ]; then
-  bash "$ASFF_SCRIPT" "$JSON_FILE" trustabl.asff.json "$REPO" || echo "WARNING: ASFF conversion failed"
+  if [ "$SECURITY_HUB" = "true" ]; then
+    bash "$ASFF_SCRIPT" --import "$JSON_FILE" trustabl.asff.json "$REPO"
+  else
+    bash "$ASFF_SCRIPT" "$JSON_FILE" trustabl.asff.json "$REPO" || echo "WARNING: ASFF conversion failed"
+  fi
 fi
 
 if [ "$FAIL" = "1" ]; then

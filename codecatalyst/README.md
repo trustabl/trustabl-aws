@@ -26,6 +26,7 @@ Copy into your repo, keeping the layout, then commit + push:
 ```
 your-repo/
 ├── scan/trustabl-scan.sh                    # the scanner
+├── scan/to-asff.sh                          # JSON → Security Hub ASFF
 └── .codecatalyst/workflows/trustabl.yaml    # the workflow (from codecatalyst/workflows/)
 ```
 

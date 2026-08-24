@@ -15,7 +15,7 @@ stage fails. Artifacts (`trustabl.json`, `trustabl.sarif`,
 artifact bucket.
 
 **Optional — Security Hub:** set `SECURITY_HUB=true` on the CodeBuild project.
-The scanner already writes `trustabl.asff.json`; the buildspec then calls
+The scanner writes `trustabl.asff.json` and then calls
 `aws securityhub batch-import-findings`. Needs Security Hub enabled in the
 region and IAM `securityhub:BatchImportFindings` plus `sts:GetCallerIdentity`
 on the CodeBuild role.
@@ -31,6 +31,7 @@ Copy these two into your repo, keeping the layout, then commit + push:
 ```
 your-repo/
 ├── scan/trustabl-scan.sh        # the scanner
+├── scan/to-asff.sh              # JSON → Security Hub ASFF
 └── codepipeline/buildspec.yml   # tells CodeBuild to run it
 ```
 
