@@ -118,13 +118,17 @@ if [[ "$TARGET" =~ ^https?://github\.com/([^/]+/[^/]+)(\.git)?/?$ ]]; then
   REPO="${BASH_REMATCH[1]%.git}"
 elif git -C "$TARGET" rev-parse --git-dir >/dev/null 2>&1; then
   REMOTE=$(git -C "$TARGET" config --get remote.origin.url 2>/dev/null || true)
-  if [[ "$REMOTE" =~ (github|gitlab)\.com[:/]([^/]+/.+?)(\.git)?$ ]]; then
+  # `.+` not `.+?`: a lazy quantifier is not POSIX ERE, and BSD's regcomp
+  # rejects the whole pattern rather than ignoring it. The trailing `.git` is
+  # stripped by the suffix expansion below, so greedy matching is what we want
+  # anyway — the optional group never captured on either platform.
+  if [[ "$REMOTE" =~ (github|gitlab)\.com[:/]([^/]+/.+)$ ]]; then
     REPO="${BASH_REMATCH[2]%.git}"
   fi
 fi
 if [ -z "$REPO" ]; then
   SRC="${CODEBUILD_SOURCE_REPO_URL:-}"
-  if [[ "$SRC" =~ github\.com[:/]([^/]+/.+?)(\.git)?$ ]]; then REPO="${BASH_REMATCH[1]%.git}"; fi
+  if [[ "$SRC" =~ github\.com[:/]([^/]+/.+)$ ]]; then REPO="${BASH_REMATCH[1]%.git}"; fi
 fi
 [ -z "$REPO" ] && REPO="$TARGET"
 

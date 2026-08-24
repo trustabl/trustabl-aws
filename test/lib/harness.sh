@@ -86,6 +86,11 @@ run_scan() {
   return 0
 }
 
+# strip_ansi removes the report's color escapes so assertions can match text.
+strip_ansi() {
+  sed $'s/\033\[[0-9;]*m//g'
+}
+
 # env_var <workspace> <NAME> prints the value the scanner wrote to trustabl.env.
 env_var() {
   sed -n "s/^$2=//p" "$1/work/trustabl.env"

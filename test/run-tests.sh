@@ -157,6 +157,26 @@ test_the_branch_label_is_reported() {
   assert_contains "report" "$SCAN_OUT" "Trustabl scanning branch: release/1.2"
 }
 
+test_the_repo_label_comes_from_the_git_remote() {
+  local ws target; ws="$(workspace)"
+  target="$ws/checkout"; mkdir -p "$target"
+  git -C "$target" init -q
+  git -C "$target" remote add origin https://github.com/openai/openai-agents-python.git
+  run_scan "$ws" TARGET="$target"
+  local report; report="$(printf '%s\n' "$SCAN_OUT" | strip_ansi)"
+  assert_contains "repository row" "$report" "openai/openai-agents-python"
+  assert_contains "summary" "$(cat "$ws/work/trustabl-summary.md")" "openai/openai-agents-python"
+}
+
+test_the_repo_label_handles_an_ssh_remote() {
+  local ws target; ws="$(workspace)"
+  target="$ws/checkout"; mkdir -p "$target"
+  git -C "$target" init -q
+  git -C "$target" remote add origin git@github.com:openai/agents.git
+  run_scan "$ws" TARGET="$target"
+  assert_contains "repository row" "$(printf '%s\n' "$SCAN_OUT" | strip_ansi)" "openai/agents"
+}
+
 # ---- run ----
 
 it "a clean scan passes and reports a perfect readiness"        test_clean_scan_passes
@@ -174,5 +194,7 @@ it "DETECTORS, STRICT and RULES_REF reach the engine"           test_scan_flags_
 it "a tampered release aborts before the engine runs"           test_a_tampered_release_aborts_before_the_engine_runs
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
 it "the branch label is reported"                               test_the_branch_label_is_reported
+it "the repo label comes from the git remote"                   test_the_repo_label_comes_from_the_git_remote
+it "the repo label handles an ssh remote"                       test_the_repo_label_handles_an_ssh_remote
 
 summarize
