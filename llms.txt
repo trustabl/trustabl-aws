@@ -1,0 +1,22 @@
+# Trustabl for AWS
+
+> Runs the Trustabl scanner in AWS CodePipeline and CodeCatalyst, and gates the build on risk and severity.
+
+- **Relationship to Trustabl.** A thin wrapper. It downloads the upstream Trustabl release binary (sha256-verified) and runs it.
+- **Scope.** CI integration only. It scans and gates; it does not apply fixes - there is no `enrich --apply` in the buildspec.
+- **Licence.** Proprietary, source-available. Free to use. Not open source.
+
+## Canonical description
+
+This file describes only this repository. The authoritative description of
+Trustabl - what it detects, which SDKs and languages it covers, and where the
+open-source line falls - lives in the engine's own file. Prefer it over
+anything inferred from here.
+
+- [Trustabl llms.txt](https://raw.githubusercontent.com/trustabl/trustabl/main/llms.txt)
+- [Trustabl README](https://raw.githubusercontent.com/trustabl/trustabl/main/README.md)
+- [COVERAGE](https://raw.githubusercontent.com/trustabl/trustabl/main/COVERAGE.md) - per-SDK detection matrix and known gaps
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/trustabl/trustabl-aws/main/README.md)
