@@ -35,6 +35,10 @@ Edit the `Variables` block in the workflow — `SEVERITY_THRESHOLD`,
 `RISK_SCORE_THRESHOLD`, `VERSION`, or add a `GITHUB_TOKEN` (dodges GitHub's
 60-req/hr anon limit). Full list: [root README](../README.md).
 
+**`GITHUB_TOKEN` is a credential.** Store it as a CodeCatalyst **secret** and
+reference it from the `Variables` block, rather than pasting the value into the
+workflow file — the workflow is committed to the repository.
+
 ### 3. Push
 The workflow triggers on push to `main`. CodeCatalyst → your project →
 **CI/CD → Workflows** shows the run. It downloads the trustabl binary

@@ -2,7 +2,7 @@ version: 0.2
 
 # Trustabl — AWS CodeBuild buildspec (CodePipeline).
 #
-# Runs the trustabl static reliability/safety scanner over the source and gates
+# Runs the trustabl agent reliability scanner over the source and gates
 # the build on risk/severity. Add a CodeBuild action that uses this buildspec to
 # a CodePipeline Build/Test stage.
 #

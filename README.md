@@ -1,9 +1,10 @@
 # Trustabl for AWS
 
-Static reliability/safety scanner for AI-agent repos (Claude, OpenAI, Google
-ADK, MCP), wired into AWS CI/CD. Downloads the upstream `trustabl` release
-binary (sha256-verified), scans your source, prints a readiness report, emits
-`trustabl.json` + `trustabl.sarif`, and gates the build on risk/severity.
+Catch AI-agent reliability issues before they ship, inside AWS CI/CD. Scans
+agent repos built on the Claude Agent SDK, OpenAI Agents SDK, Google ADK,
+LangChain, CrewAI, and MCP. Downloads the upstream `trustabl` release binary
+(sha256-verified), prints a readiness report, emits `trustabl.json` +
+`trustabl.sarif`, and gates the build on risk and severity.
 
 One scanner (`scan/trustabl-scan.sh`), two integrations:
 

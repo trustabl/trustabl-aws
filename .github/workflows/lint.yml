@@ -1,0 +1,68 @@
+name: Lint
+
+# This repo had no CI at all while taking external pull requests, which meant
+# every incoming change was reviewed by eye with nothing verifying it.
+#
+# Deliberately named lint.yml, not ci.yml: PR #20 adds a ci.yml with a full
+# test harness. These are meant to coexist, not collide.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Parse every script without running it. Catches the realistic failure -
+      # a contributor breaking syntax in a script nobody executes until a
+      # customer's pipeline does.
+      - name: Syntax check
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            if bash -n "$f"; then
+              echo "  ok   $f"
+            else
+              echo "::error file=$f::bash -n failed"
+              fail=1
+            fi
+          done < <(find . -name '*.sh' -not -path './.git/*')
+          exit $fail
+
+      # Errors only, not style. A required check that argues about quoting
+      # preferences gets disabled within a week; one that only fires on real
+      # bugs stays useful.
+      - name: ShellCheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          find . -name '*.sh' -not -path './.git/*' -print0 \
+            | xargs -0 shellcheck -S error
+
+  yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # buildspec.yml and the CodeCatalyst workflow are what AWS consumes. A
+      # malformed one fails inside a customer's pipeline, not here. (Files under
+      # .github/ are skipped - glob ignores dot-directories, and GitHub
+      # validates its own workflow files anyway.)
+      - name: Parse YAML
+        run: |
+          python3 - <<'PY'
+          import glob, sys, yaml
+          bad = 0
+          for f in glob.glob('**/*.yml', recursive=True) + glob.glob('**/*.yaml', recursive=True):
+              try:
+                  yaml.safe_load(open(f))
+                  print('  ok  ', f)
+              except Exception as e:
+                  print(f'::error file={f}::{e}')
+                  bad = 1
+          sys.exit(bad)
+          PY
