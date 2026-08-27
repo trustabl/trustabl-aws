@@ -11,11 +11,14 @@
 
 A gate failure exits non-zero -> the CodeBuild action fails -> the pipeline
 stage fails. Artifacts (`trustabl.json`, `trustabl.sarif`,
-`trustabl-summary.md`, `trustabl.env`) are emitted to the artifact bucket.
+`trustabl-summary.md`, `trustabl.env`, `trustabl.asff.json`) are emitted to the
+artifact bucket.
 
-**Optional — Security Hub:** convert findings to ASFF and
-`aws securityhub batch-import-findings` to surface them in Security Hub (needs
-Security Hub enabled + IAM `securityhub:BatchImportFindings`). Not in v0.1.0.
+**Optional — Security Hub:** set `SECURITY_HUB=true` on the CodeBuild project.
+The scanner writes `trustabl.asff.json` and then calls
+`aws securityhub batch-import-findings`. Needs Security Hub enabled in the
+region and IAM `securityhub:BatchImportFindings` plus `sts:GetCallerIdentity`
+on the CodeBuild role.
 
 ## Quickstart — from zero (console)
 
@@ -28,6 +31,7 @@ Copy these two into your repo, keeping the layout, then commit + push:
 ```
 your-repo/
 ├── scan/trustabl-scan.sh        # the scanner
+├── scan/to-asff.sh              # JSON → Security Hub ASFF
 └── codepipeline/buildspec.yml   # tells CodeBuild to run it
 ```
 
@@ -37,7 +41,8 @@ Console → **CodeBuild → Create build project**:
 - **Buildspec:** "Use a buildspec file" → path `codepipeline/buildspec.yml`
 - **Service role:** let CodeBuild create one (it needs CloudWatch Logs)
 - *(optional)* **Env vars:** `SEVERITY_THRESHOLD`, `RISK_SCORE_THRESHOLD`,
-  `VERSION` (pin a tag), `GITHUB_TOKEN` (dodges GitHub's 60-req/hr anon limit)
+  `VERSION` (pin a tag), `GITHUB_TOKEN` (dodges GitHub's 60-req/hr anon limit),
+  `REPORT_ONLY=true` (trial without gating), `SECURITY_HUB=true` (import ASFF)
 - **`GITHUB_TOKEN` is a credential** — add it with type **Secrets Manager** or
   **Parameter Store**, not as a plaintext environment variable. Plaintext env
   vars are readable by anyone with `codebuild:BatchGetProjects`.
@@ -60,15 +65,16 @@ prints the readiness report, uploads `trustabl.json` / `trustabl.sarif` /
 `trustabl-summary.md` / `trustabl.env` as artifacts, and **fails the stage if
 any finding is medium-or-higher** — so the pipeline stops on unsafe agent code.
 
-> **Want report-only (don't block the pipeline)?** trustabl fails on medium+ by
-> default. To make *findings* advisory while still failing on a broken scan,
-> change the build command in your buildspec to:
-> `- bash "$CODEBUILD_SRC_DIR/scan/trustabl-scan.sh" || [ $? -eq 1 ]`
+> **Want report-only (don't block the pipeline)?** Set `REPORT_ONLY=true` on
+> the CodeBuild project. That publishes artifacts and still fails the build on
+> scanner errors (exit 2). Do not use `|| true` — that also swallows a dead
+> scanner, which [docs/EVALUATION.md](../docs/EVALUATION.md) says not to trust.
 >
-> Not `|| true`. Exit 1 means the scan ran and gated; exit 2 means it did not
-> run — a missing tool, an unreachable release, unusable rules. `|| true`
-> swallows both, so a pipeline that never scans anything reports the same green
-> as one that scans clean. See [exit codes](../docs/EVALUATION.md#exit-codes).
+> Equivalent without the env var: change the build command in your buildspec to
+> `- bash "$CODEBUILD_SRC_DIR/scan/trustabl-scan.sh" || [ $? -eq 1 ]`.
+> Exit 1 means the scan ran and gated; exit 2 means it did not run — a missing
+> tool, an unreachable release, unusable rules. See
+> [exit codes](../docs/EVALUATION.md#exit-codes).
 
 ### CLI (alternative to steps 2–3)
 After vendoring (step 1), replace `<you>/<repo>` and `<acct>`:

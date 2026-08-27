@@ -61,6 +61,7 @@ Copy into your repo, keeping the layout, then commit + push:
 ```
 your-repo/
 ├── scan/trustabl-scan.sh                    # the scanner
+├── scan/to-asff.sh                          # JSON → Security Hub ASFF
 └── .codecatalyst/workflows/trustabl.yaml    # the workflow (from codecatalyst/workflows/)
 ```
 
@@ -81,15 +82,15 @@ The workflow triggers on push to `main`. CodeCatalyst → your project →
 the **Reports** tab (SARIF), and **fails the run on any medium-or-higher
 finding**.
 
-> **Report-only (don't block)?** trustabl fails on medium+ by default. To make
-> *findings* advisory while still failing on a broken scan, change the workflow
-> `Run:` line to:
-> `- Run: bash scan/trustabl-scan.sh || [ $? -eq 1 ]`
+> **Report-only (don't block)?** Set `REPORT_ONLY=true` in the workflow
+> Variables. That publishes artifacts and still fails on scanner errors
+> (exit 2). Do not use `|| true` — that also swallows a dead scanner.
 >
-> Not `|| true`. Exit 1 means the scan ran and gated; exit 2 means it did not
-> run — a missing tool, an unreachable release, unusable rules. `|| true`
-> swallows both, so a workflow that never scans anything reports the same green
-> as one that scans clean. See [exit codes](../docs/EVALUATION.md#exit-codes).
+> Equivalent without the env var: change the workflow `Run:` line to
+> `- Run: bash scan/trustabl-scan.sh || [ $? -eq 1 ]`.
+> Exit 1 means the scan ran and gated; exit 2 means it did not run — a missing
+> tool, an unreachable release, unusable rules. See
+> [exit codes](../docs/EVALUATION.md#exit-codes).
 
 ### CLI?
 CodeCatalyst workflows are **file-driven** — there's no separate CLI to create

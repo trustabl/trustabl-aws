@@ -13,7 +13,7 @@
 # Inputs are environment variables (all optional; sensible defaults):
 #   TARGET VERSION DETECTORS STRICT RULES_REF RULES_REPO
 #   SARIF_FILE JSON_FILE RISK_SCORE_THRESHOLD SEVERITY_THRESHOLD
-#   BRANCH GITHUB_TOKEN DEBUG TRUSTABL_BIN_DIR
+#   BRANCH GITHUB_TOKEN DEBUG REPORT_ONLY SECURITY_HUB TRUSTABL_BIN_DIR
 
 # ---- inputs (env, with defaults) ----
 TARGET="${TARGET:-.}"
@@ -27,6 +27,8 @@ JSON_FILE="${JSON_FILE:-trustabl.json}"
 RISK_THRESHOLD="${RISK_SCORE_THRESHOLD:-0}"
 SEV_THRESHOLD="${SEVERITY_THRESHOLD:-none}"
 BRANCH_INPUT="${BRANCH:-}"
+REPORT_ONLY="${REPORT_ONLY:-false}"
+SECURITY_HUB="${SECURITY_HUB:-false}"
 
 # ---- preflight: required commands ----
 # The CodePipeline buildspec's install phase ends in `|| true` and hides its
@@ -428,6 +430,14 @@ if [ -n "$ST" ] && [ "$ST" != "none" ]; then
   fi
 fi
 
+# REPORT_ONLY implements docs/EVALUATION.md step 1 ("scan without gating
+# first") without `|| true`, which would also swallow scanner errors (exit 2).
+if [ "$FAIL" = "1" ] && [ "$REPORT_ONLY" = "true" ] && [ "$NATIVE_CODE" != "2" ]; then
+  echo "REPORT_ONLY=true: not failing the build (${REASONS[*]})"
+  FAIL=0
+  REASONS=()
+fi
+
 GREEN=$'\e[1;32m'; RED=$'\e[1;31m'; RESET=$'\e[0m'
 # No native step-summary UI on AWS; write the markdown to an artifact instead.
 SUMMARY="trustabl-summary.md"
@@ -467,9 +477,22 @@ SUMMARY="trustabl-summary.md"
   echo ""
 } >> "$SUMMARY"
 
+# Always emit ASFF next to the other artifacts. SECURITY_HUB=true also
+# batch-imports; that path is fail-closed (missing aws CLI, IAM, or Hub).
+ASFF_SCRIPT="$(cd "$(dirname "$0")" && pwd)/to-asff.sh"
+if [ -x "$ASFF_SCRIPT" ] || [ -f "$ASFF_SCRIPT" ]; then
+  if [ "$SECURITY_HUB" = "true" ]; then
+    bash "$ASFF_SCRIPT" --import "$JSON_FILE" trustabl.asff.json "$REPO"
+  else
+    bash "$ASFF_SCRIPT" "$JSON_FILE" trustabl.asff.json "$REPO" || echo "WARNING: ASFF conversion failed"
+  fi
+fi
+
 if [ "$FAIL" = "1" ]; then
   printf '%b\n' "${RED}✗ Failed due to: ${REASONS[*]}${RESET}"
   echo "### ❌ Failed — ${REASONS[*]}" >> "$SUMMARY"
+  # REPORT_ONLY already cleared gate hits above; remaining FAIL is scanner/I/O
+  # (exit 2) or an invalid threshold (exit 1).
   exit "$EXIT_CODE"
 fi
 

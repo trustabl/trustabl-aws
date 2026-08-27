@@ -15,7 +15,9 @@ version: 0.2
 #   RISK_SCORE_THRESHOLD (default 0), SEVERITY_THRESHOLD (default none),
 #   BRANCH (report label; CodePipeline checkouts often have no .git),
 #   DEBUG (set -x; do not enable with GITHUB_TOKEN — it echoes the header),
-#   GITHUB_TOKEN (optional — dodges GitHub's 60 req/hr anon rate limit).
+#   GITHUB_TOKEN (optional — dodges GitHub's 60 req/hr anon rate limit),
+#   REPORT_ONLY (default false — scan without gating; scanner errors still fail),
+#   SECURITY_HUB (default false — import findings into AWS Security Hub).
 
 env:
   variables:
@@ -44,3 +46,4 @@ artifacts:
     - trustabl.sarif
     - trustabl-summary.md
     - trustabl.env
+    - trustabl.asff.json

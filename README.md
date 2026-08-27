@@ -41,13 +41,16 @@ covers how to trial it and how to read what it reports.
 | `RISK_SCORE_THRESHOLD` | `0` | Fail when risk (100 − readiness) >= N. `0` disables. |
 | `SEVERITY_THRESHOLD` | `none` | Fail when any finding >= severity (`none/low/medium/high/critical`). |
 | `GITHUB_TOKEN` | _(none)_ | Optional — avoids GitHub's 60 req/hr anonymous rate limit. |
+| `REPORT_ONLY` | `false` | Scan and publish artifacts without gating. Scanner errors (exit 2) still fail the build. |
+| `SECURITY_HUB` | `false` | Import ASFF findings into AWS Security Hub (`securityhub:BatchImportFindings`). |
 | `TRUSTABL_BIN_DIR` | _(temp dir)_ | Where to download/unpack the binary. Must sit outside `TARGET`. |
 
 ## Outputs
 
-`trustabl.json`, `trustabl.sarif`, `trustabl-summary.md`, and `trustabl.env`
+`trustabl.json`, `trustabl.sarif`, `trustabl-summary.md`, `trustabl.env`
 (`TRUSTABL_READINESS_SCORE`, `TRUSTABL_RISK_SCORE`, `TRUSTABL_MAX_SEVERITY`,
-`TRUSTABL_FINDINGS_COUNT`, `TRUSTABL_EXIT_CODE`).
+`TRUSTABL_FINDINGS_COUNT`, `TRUSTABL_EXIT_CODE`), and `trustabl.asff.json` (ASFF
+for Security Hub).
 
 ## A note on "AWS Marketplace"
 
