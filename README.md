@@ -66,3 +66,23 @@ Because AWS does not offer a native self-serve plugin marketplace, you can quick
 ```bash
 mkdir -p scan && curl -fsSL https://raw.githubusercontent.com/trustabl/trustabl-aws/main/scan/trustabl-scan.sh -o scan/trustabl-scan.sh && chmod +x scan/trustabl-scan.sh
 ```
+
+## Rule integrity
+
+`trustabl` verifies rules against an embedded trust keyring by default and
+refuses to run unverified rules, exiting 2 on a verification failure. It also
+has an unsigned git path, and this plugin exposes two inputs that reach it:
+
+| Var | Default | Effect on integrity |
+|---|---|---|
+| `RULES_REPO` | _(default)_ | Exported as `TRUSTABL_RULES_REPO` — points the scan at a different rules source. |
+| `RULES_REF` | _(default)_ | Pins a git ref rather than taking the current signed bundle. |
+| `REQUIRE_SIGNED` | `false` | `true` passes `--require-signed`, which forbids the unsigned fallback. |
+
+Neither of the first two is wrong to use — pinning a ref is a reasonable way to
+get reproducible scans. What matters is that a gate should be explicit about it.
+Set `REQUIRE_SIGNED=true` and the scan fails rather than quietly falling back to
+unsigned rules; leave it unset and the behaviour is exactly as before.
+
+A scanner is only as trustworthy as the rules it runs, so it is worth deciding
+this deliberately rather than inheriting a default.

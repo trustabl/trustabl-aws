@@ -11,7 +11,7 @@
 # GitLab-only bits (gl-sast report, CI_* env) are swapped for AWS equivalents.
 #
 # Inputs are environment variables (all optional; sensible defaults):
-#   TARGET VERSION DETECTORS STRICT RULES_REF RULES_REPO
+#   TARGET VERSION DETECTORS STRICT RULES_REF RULES_REPO REQUIRE_SIGNED
 #   SARIF_FILE JSON_FILE RISK_SCORE_THRESHOLD SEVERITY_THRESHOLD
 #   BRANCH GITHUB_TOKEN DEBUG REPORT_ONLY SECURITY_HUB TRUSTABL_BIN_DIR
 
@@ -238,6 +238,15 @@ BASE_ARGS=(scan "$TARGET")
 [ -n "$DETECTORS" ] && BASE_ARGS+=(--detectors "$DETECTORS")
 [ "$STRICT" = "true" ] && BASE_ARGS+=(--strict)
 [ -n "$RULES_REF" ] && BASE_ARGS+=(--rules-ref "$RULES_REF")
+# trustabl verifies rules against an embedded keyring by default and exits 2 on
+# a verification failure, but it also has an unsigned git path. This plugin
+# hands users two knobs onto that path -- RULES_REPO (exported above as
+# TRUSTABL_RULES_REPO) and RULES_REF -- and offered no way to say "never accept
+# unsigned rules", which is exactly the guarantee a CI gate wants.
+# Matched case-insensitively on purpose: silently ignoring REQUIRE_SIGNED=TRUE
+# would be a fail-open on the one input whose job is to tighten the gate.
+REQ_SIGNED="${REQUIRE_SIGNED:-false}"
+[ "${REQ_SIGNED,,}" = "true" ] && BASE_ARGS+=(--require-signed)
 
 # Run 1: SARIF (file emit).
 trustabl "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
