@@ -89,7 +89,11 @@ curl -fSL -H "Accept: application/octet-stream" "${AUTH[@]}" \
 # ---- verify checksum (sha256 against the release checksums.txt) ----
 if curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
      "https://github.com/trustabl/trustabl/releases/download/${VER}/checksums.txt" 2>/dev/null; then
-  EXPECTED=$(grep " ${ASSET}\$" "$DEST/checksums.txt" | awk '{print $1}' | head -1)
+  # Match the asset name literally. $ASSET contains dots, which grep treats as
+  # wildcards, so a checksums.txt entry differing from the wanted asset only at
+  # those positions would satisfy the match. Compare field 2 for equality
+  # instead, allowing sha256sum's binary-mode "*" prefix.
+  EXPECTED=$(awk -v a="$ASSET" '$2 == a || $2 == "*" a { print $1 }' "$DEST/checksums.txt" | head -1)
   if [ -n "$EXPECTED" ]; then
     ACTUAL=$(sha256sum "$DEST/$ASSET" | awk '{print $1}')
     if [ "$EXPECTED" != "$ACTUAL" ]; then
@@ -105,7 +109,14 @@ else
 fi
 
 tar -xzf "$DEST/$ASSET" -C "$DEST"
-export PATH="$DEST:$PATH"
+# Bind the downloaded binary by path rather than prepending $DEST to PATH.
+# $DEST holds a just-extracted release tarball; putting it first on PATH means
+# every later `jq` and `awk` in this script resolves out of that tarball, so a
+# compromised release asset could supply its own jq and control every score the
+# wrapper computes. jq is already required before the download exists (the
+# "latest" version lookup above uses it), so it is a system prerequisite and
+# nothing here depends on the tarball providing it.
+TRUSTABL_BIN="$DEST/trustabl"
 
 # ---- scan ----
 set +e
@@ -134,11 +145,11 @@ BASE_ARGS=(scan "$TARGET")
 [ -n "$RULES_REF" ] && BASE_ARGS+=(--rules-ref "$RULES_REF")
 
 # Run 1: SARIF (file emit).
-trustabl "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
+"$TRUSTABL_BIN" "${BASE_ARGS[@]}" --format sarif > "$SARIF_FILE"
 NATIVE_CODE=$?
 
 # Run 2: JSON (drives thresholds, log summary, dotenv).
-trustabl "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
+"$TRUSTABL_BIN" "${BASE_ARGS[@]}" --format json > "$JSON_FILE" || true
 SCAN_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # trustabl's overall_score is a float in [0.0, 1.0]; scale to [0,100] ints.
