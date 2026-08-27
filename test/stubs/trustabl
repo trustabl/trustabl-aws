@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Stub trustabl engine. Shipped inside the fake release tarball the stub curl
+# serves, so the scanner installs and invokes it exactly as it would the real
+# binary.
+#
+# Behavior is driven by the environment, so a test can pick the ScanResult the
+# engine "returns" and the exit code it returns it with:
+#   STUB_JSON       file whose contents answer --format json   (required)
+#   STUB_SARIF      file whose contents answer --format sarif   (required)
+#   STUB_EXIT       exit code for a scan                        (default 0)
+#   STUB_ARGS_LOG   append the argv of every invocation here    (optional)
+
+set -euo pipefail
+
+[ -n "${STUB_ARGS_LOG:-}" ] && printf '%s\n' "$*" >> "$STUB_ARGS_LOG"
+
+case "${1:-}" in
+  version) echo "Trustabl 0.0.0-stub"; exit 0 ;;
+  scan)    ;;
+  *)       echo "stub trustabl: unsupported command ${1:-<none>}" >&2; exit 2 ;;
+esac
+
+format=human
+for i in "$@"; do
+  if [ "${prev:-}" = "--format" ]; then format="$i"; fi
+  prev="$i"
+done
+
+case "$format" in
+  json)  cat "$STUB_JSON" ;;
+  sarif) cat "$STUB_SARIF" ;;
+  *)     echo "stub trustabl: human report" ;;
+esac
+
+exit "${STUB_EXIT:-0}"
