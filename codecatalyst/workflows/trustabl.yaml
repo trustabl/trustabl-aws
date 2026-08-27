@@ -38,10 +38,16 @@ Actions:
             - trustabl.sarif
             - trustabl-summary.md
       # Surfaces findings in the CodeCatalyst Reports tab.
-      # NOTE: verify the SARIF report Format enum against current CodeCatalyst
-      # docs before relying on it (the schema evolves).
+      #
+      # SARIFSA, not SARIFSCA. CodeCatalyst offers SARIF under two report types:
+      # SARIFSA for static analysis and SARIFSCA for software composition
+      # analysis. trustabl is a static analyzer over agent source, so its
+      # findings belong in the static-analysis report — SCA is the
+      # dependency/vulnerability report type, which this workflow does not
+      # produce (the scanner does not pass --vuln-scan).
+      # https://docs.aws.amazon.com/codecatalyst/latest/userguide/test.sarif.html
       Reports:
         trustabl-sarif:
-          Format: SARIFSCA
+          Format: SARIFSA
           IncludePaths:
             - trustabl.sarif
