@@ -35,8 +35,28 @@ export TRUSTABL_RULES_REPO="$RULES_REPO"
 
 # Optional GitHub auth (set GITHUB_TOKEN as a secret) to dodge the 60 req/hr
 # anonymous GitHub API limit on version lookup + download.
-AUTH=()
-[ -n "${GITHUB_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+#
+# Every authenticated request goes through auth_curl, which is the only place
+# the token is ever expanded. Under DEBUG=true the script runs with set -x, and
+# bash echoes each command *after* expansion — so a token expanded anywhere in
+# traced code lands in the build log, readable by anyone with access to the
+# CodeBuild project or CodeCatalyst workflow. Holding it in a variable does not
+# help: the assignment is traced too.
+#
+# xtrace is saved and restored around the call rather than switched off
+# wholesale, so DEBUG still traces everything else.
+auth_curl() {
+  local xtrace_was_on=0 rc
+  case "$-" in *x*) xtrace_was_on=1; set +x ;; esac
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    curl -H "Authorization: Bearer ${GITHUB_TOKEN}" "$@"
+  else
+    curl "$@"
+  fi
+  rc=$?
+  [ "$xtrace_was_on" = 1 ] && set -x
+  return $rc
+}
 
 # ---- resolve branch label ----
 # CodeBuild gives refs/heads/<branch> in CODEBUILD_WEBHOOK_HEAD_REF; CodeCatalyst
@@ -57,7 +77,7 @@ echo "Trustabl scanning branch: $BR"
 # ---- resolve version ----
 VER="$VERSION"
 if [ "$VER" = "latest" ]; then
-  VER=$(curl -sSL "${AUTH[@]}" https://api.github.com/repos/trustabl/trustabl/releases/latest | jq -r '.tag_name // empty')
+  VER=$(auth_curl -sSL https://api.github.com/repos/trustabl/trustabl/releases/latest | jq -r '.tag_name // empty')
 fi
 if [ -z "$VER" ] || [ "$VER" = "null" ]; then
   echo "Could not resolve trustabl version. Pin 'VERSION' to a tag, or set GITHUB_TOKEN."
@@ -82,12 +102,12 @@ DEST="$(pwd)/.trustabl-bin"
 mkdir -p "$DEST"
 # The release download URL (Accept: application/octet-stream) increments the
 # upstream trustabl/trustabl per-asset download_count.
-curl -fSL -H "Accept: application/octet-stream" "${AUTH[@]}" \
+auth_curl -fSL -H "Accept: application/octet-stream" \
   -o "$DEST/$ASSET" \
   "https://github.com/trustabl/trustabl/releases/download/${VER}/${ASSET}"
 
 # ---- verify checksum (sha256 against the release checksums.txt) ----
-if curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
+if auth_curl -fsSL -o "$DEST/checksums.txt" \
      "https://github.com/trustabl/trustabl/releases/download/${VER}/checksums.txt" 2>/dev/null; then
   EXPECTED=$(grep " ${ASSET}\$" "$DEST/checksums.txt" | awk '{print $1}' | head -1)
   if [ -n "$EXPECTED" ]; then

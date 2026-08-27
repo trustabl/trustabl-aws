@@ -1,0 +1,156 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "trustabl",
+          "fullName": "Trustabl — static analyzer for agent reliability",
+          "informationUri": "https://github.com/trustabl/trustabl",
+          "version": "0.1.7",
+          "semanticVersion": "0.1.7",
+          "rules": [
+            {
+              "id": "CSDK-203",
+              "shortDescription": {
+                "text": "Repo ships Claude Agent SDK code without an agent-guidance doc (AGENTS.md/CLAUDE.md)"
+              },
+              "fullDescription": {
+                "text": "A repository that builds on the Claude Agent SDK but ships no agent-guidance doc — CLAUDE.md (the Claude Code convention) or AGENTS.md (the cross-vendor one) — leaves any coding agent that opens the repo with no project-specific guidance. The conventions, build commands, test runners, lint scripts, and \"do not touch\" boundaries a human maintainer would describe in onboarding are absent, so the agent has to infer them from the source on every session and frequently guesses wrong — bypassing the project's lint, picking the wrong test command, or violating commit conventions that were never written down anywhere it could read. The cost compounds: each new contributor (human or agent) reinvents the same wrong assumptions.\n"
+              },
+              "help": {
+                "text": "Add a CLAUDE.md (or an AGENTS.md) at the repository root documenting how to build, test, and lint the project, the coding conventions the agent must respect, the directories or files it must not modify, and any project-specific safety guardrails (e.g. \"never run migrations\", \"never push to main\"). Treat it as the project's agent-facing README and keep it under version control so reviewers see drift.\n"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "confidence": 0.9,
+                "security-severity": "3.0",
+                "tags": [
+                  "claude_sdk",
+                  "repo",
+                  "python"
+                ]
+              }
+            },
+            {
+              "id": "OAI-201",
+              "shortDescription": {
+                "text": "Project uses default OpenAI tracing"
+              },
+              "fullDescription": {
+                "text": "The project uses the OpenAI Agents SDK with default tracing enabled. By default, inputs, tool calls, tool outputs, and agent responses are sent to OpenAI's hosted tracing backend. For projects handling sensitive data (PII, credentials, internal documents), this is a data egress channel that is easy to miss.\n"
+              },
+              "help": {
+                "text": "Either disable tracing entirely (set OPENAI_AGENTS_DISABLE_TRACING=1 in the environment) OR register a custom trace processor via agents.tracing.add_trace_processor(...) that redacts sensitive fields before they leave the process.\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "confidence": 0.8,
+                "security-severity": "5.5",
+                "tags": [
+                  "openai_sdk",
+                  "repo",
+                  "python"
+                ]
+              }
+            },
+            {
+              "id": "OAI-202",
+              "shortDescription": {
+                "text": "OpenAI Agents project ships no agent-guidance doc (AGENTS.md/CLAUDE.md)"
+              },
+              "fullDescription": {
+                "text": "The project uses the OpenAI Agents SDK in code but ships no agent-guidance doc (AGENTS.md or CLAUDE.md) at the repo root. AGENTS.md is the cross-vendor convention an editing coding agent reads before it acts; with neither file present, any agent that opens this repo has no project-specific guidance on Agent vs SandboxAgent choice, handoff topology, required input/output guardrails, tool_choice settings, or the local test and build commands. The likely consequence is generated code that bypasses the project's safety contracts because nothing in-tree teaches the agent the local rules.\n"
+              },
+              "help": {
+                "text": "Add an AGENTS.md at the repo root (the cross-vendor standard; a CLAUDE.md also satisfies this rule). State whether the project uses Agent or SandboxAgent, list required guardrails (input_guardrails, output_guardrails) and tool_choice conventions, note any handoff or tracing policy, and give the exact test, lint, and build commands. Keep it short and concrete so an editing agent can act on it without re-deriving the conventions.\n"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "confidence": 0.9,
+                "security-severity": "3.0",
+                "tags": [
+                  "openai_sdk",
+                  "repo",
+                  "python"
+                ]
+              }
+            }
+          ],
+          "properties": {
+            "rules_from_cache": false,
+            "rules_source": "https://github.com/trustabl/trustabl-rules",
+            "rules_version": "3dcf1e9c8796bdb8408e91707d7799388c291bac4b17321030872a0b7fa742bb"
+          }
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "CSDK-203",
+          "ruleIndex": 0,
+          "kind": "informational",
+          "message": {
+            "text": "A repository that builds on the Claude Agent SDK but ships no agent-guidance doc — CLAUDE.md (the Claude Code convention) or AGENTS.md (the cross-vendor one) — leaves any coding agent that opens the repo with no project-specific guidance. The conventions, build commands, test runners, lint scripts, and \"do not touch\" boundaries a human maintainer would describe in onboarding are absent, so the agent has to infer them from the source on every session and frequently guesses wrong — bypassing the project's lint, picking the wrong test command, or violating commit conventions that were never written down anywhere it could read. The cost compounds: each new contributor (human or agent) reinvents the same wrong assumptions.\n"
+          },
+          "rank": 90,
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8c927f0b1b0fb63358ed8144fb13e050c197ca78e3086aa6eb128d97cc47085a"
+          },
+          "properties": {
+            "confidence": 0.9
+          }
+        },
+        {
+          "ruleId": "OAI-201",
+          "ruleIndex": 1,
+          "kind": "informational",
+          "message": {
+            "text": "The project uses the OpenAI Agents SDK with default tracing enabled. By default, inputs, tool calls, tool outputs, and agent responses are sent to OpenAI's hosted tracing backend. For projects handling sensitive data (PII, credentials, internal documents), this is a data egress channel that is easy to miss.\n"
+          },
+          "rank": 80,
+          "partialFingerprints": {
+            "primaryLocationLineHash": "909f2973bbb976bb4bca098a37428ad29f25c0b2587171b86430a13f1367e5d4"
+          },
+          "properties": {
+            "confidence": 0.8
+          }
+        },
+        {
+          "ruleId": "OAI-202",
+          "ruleIndex": 2,
+          "kind": "informational",
+          "message": {
+            "text": "The project uses the OpenAI Agents SDK in code but ships no agent-guidance doc (AGENTS.md or CLAUDE.md) at the repo root. AGENTS.md is the cross-vendor convention an editing coding agent reads before it acts; with neither file present, any agent that opens this repo has no project-specific guidance on Agent vs SandboxAgent choice, handoff topology, required input/output guardrails, tool_choice settings, or the local test and build commands. The likely consequence is generated code that bypasses the project's safety contracts because nothing in-tree teaches the agent the local rules.\n"
+          },
+          "rank": 90,
+          "partialFingerprints": {
+            "primaryLocationLineHash": "26a8e7422c51ce85da5436d8ee503243e0a68a42e73ccb4ac96ab9be0ea776e1"
+          },
+          "properties": {
+            "confidence": 0.9
+          }
+        }
+      ],
+      "automationDetails": {
+        "id": "scan_8432e6168f06aba5"
+      },
+      "originalUriBaseIds": {
+        "REPO_ROOT": {
+          "uri": "file:///src/testdata/handoffs/"
+        }
+      }
+    }
+  ]
+}
