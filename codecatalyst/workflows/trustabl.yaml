@@ -3,14 +3,22 @@ SchemaVersion: "1.0"
 
 # Trustabl — Amazon CodeCatalyst workflow.
 #
-# Runs the trustabl scanner over WorkflowSource on every push to main and gates
-# the run on risk/severity. Vendor the plugin's `scan/` directory into your repo
-# (this action runs `scan/trustabl-scan.sh` from the source checkout).
+# Runs the trustabl scanner over WorkflowSource on every push to main and on
+# pull requests targeting main, and gates the run on risk/severity. Vendor the
+# plugin's `scan/` directory into your repo (this action runs
+# `scan/trustabl-scan.sh` from the source checkout).
 
 Triggers:
   - Type: PUSH
     Branches:
       - main
+  # Destination branch is main; the run uses source-branch files (the PR head).
+  - Type: PULLREQUEST
+    Branches:
+      - main
+    Events:
+      - OPEN
+      - REVISION
 
 Actions:
   Trustabl_Scan:

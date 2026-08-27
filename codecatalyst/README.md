@@ -74,13 +74,13 @@ Edit the `Variables` block in the workflow — `SEVERITY_THRESHOLD`,
 reference it from the `Variables` block, rather than pasting the value into the
 workflow file — the workflow is committed to the repository.
 
-### 3. Push
-The workflow triggers on push to `main`. CodeCatalyst → your project →
-**CI/CD → Workflows** shows the run. It downloads the trustabl binary
-(sha256-verified), scans the checkout, uploads `trustabl.json` /
-`trustabl.sarif` / `trustabl-summary.md` / `trustabl.env`, surfaces findings in
-the **Reports** tab (SARIF), and **fails the run on any medium-or-higher
-finding**.
+### 3. Push (or open a PR)
+The workflow triggers on push to `main`, and on pull requests opened or updated
+against `main`. CodeCatalyst → your project → **CI/CD → Workflows** shows the
+run. It downloads the trustabl binary (sha256-verified), scans the checkout,
+uploads `trustabl.json` / `trustabl.sarif` / `trustabl-summary.md` /
+`trustabl.env`, surfaces findings in the **Reports** tab (SARIF), and **fails
+the run on any medium-or-higher finding**.
 
 > **Report-only (don't block)?** Set `REPORT_ONLY=true` in the workflow
 > Variables. That publishes artifacts and still fails on scanner errors
