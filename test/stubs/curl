@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Stub curl. Serves the files in $STUB_RELEASE_DIR by URL basename, so the
+# scanner's real download / checksum / extract path runs unchanged against a
+# locally built release. An unknown URL exits 22, the code real curl uses for an
+# HTTP error under -f.
+
+set -uo pipefail
+
+out=""
+url=""
+prev=""
+for arg in "$@"; do
+  case "$prev" in
+    -o) out="$arg" ;;
+  esac
+  case "$arg" in
+    -*) ;;
+    *) [[ "$arg" == http*://* ]] && url="$arg" ;;
+  esac
+  prev="$arg"
+done
+
+[ -n "${STUB_CURL_LOG:-}" ] && printf '%s\n' "$url" >> "$STUB_CURL_LOG"
+
+src="$STUB_RELEASE_DIR/$(basename "$url")"
+[ -f "$src" ] || exit 22
+
+if [ -n "$out" ]; then cp "$src" "$out"; else cat "$src"; fi
