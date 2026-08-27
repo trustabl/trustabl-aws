@@ -27,3 +27,130 @@ jobs:
           jq --version
       - name: Run the scanner test suite
         run: bash test/run-tests.sh
+
+  validate:
+    name: Lint the scanner, validate the CI configs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Syntax-check the scanner (bash -n)
+        run: bash -n scan/trustabl-scan.sh
+
+      # shellcheck is preinstalled on GitHub's Ubuntu runners.
+      # The gate is `error` severity, which the script is clean at today.
+      - name: ShellCheck the scanner (gate at error severity)
+        run: shellcheck --severity=error --format=gcc scan/trustabl-scan.sh
+
+      # Everything from `warning` up, reported but not enforced. The script
+      # currently has two SC2034 findings here; surfacing them keeps them from
+      # being forgotten without blocking unrelated changes.
+      - name: ShellCheck the scanner (warning and above, informational)
+        continue-on-error: true
+        run: shellcheck --severity=warning scan/trustabl-scan.sh
+
+      - name: Install PyYAML
+        run: python3 -m pip install --quiet pyyaml
+
+      # Parsing alone is not enough: a buildspec that parses but has lost
+      # `artifacts.files` still silently produces no scan results. Assert the
+      # keys the CodePipeline and CodeCatalyst integrations actually consume.
+      - name: Validate the buildspec and CodeCatalyst workflow
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import sys
+
+          import yaml
+
+          failures = []
+
+
+          def check(ok, msg):
+              print(("ok    " if ok else "FAIL  ") + msg)
+              if not ok:
+                  failures.append(msg)
+              return ok
+
+
+          def load(path):
+              p = pathlib.Path(path)
+              if not check(p.is_file(), path + ": file exists"):
+                  return {}
+              try:
+                  doc = yaml.safe_load(p.read_text(encoding="utf-8"))
+              except yaml.YAMLError as exc:
+                  check(False, path + ": parses as YAML (" + type(exc).__name__ + ")")
+                  return {}
+              check(isinstance(doc, dict), path + ": parses as a YAML mapping")
+              return doc if isinstance(doc, dict) else {}
+
+
+          def dig(doc, dotted):
+              cur = doc
+              for key in dotted.split("."):
+                  if not isinstance(cur, dict) or key not in cur:
+                      return None
+                  cur = cur[key]
+              return cur
+
+
+          def present(doc, label, dotted):
+              check(dig(doc, dotted) is not None, label + ": " + dotted + " is set")
+
+
+          def nonempty_list(doc, label, dotted):
+              val = dig(doc, dotted)
+              check(
+                  isinstance(val, list) and len(val) > 0,
+                  label + ": " + dotted + " is a non-empty list",
+              )
+              return val if isinstance(val, list) else []
+
+
+          SCANNER = "scan/trustabl-scan.sh"
+          check(
+              pathlib.Path(SCANNER).is_file(),
+              SCANNER + ": exists (both integrations invoke it by this path)",
+          )
+
+          bs = load("codepipeline/buildspec.yml")
+          present(bs, "buildspec", "version")
+          cmds = nonempty_list(bs, "buildspec", "phases.build.commands")
+          check(
+              any(SCANNER in str(c) for c in cmds),
+              "buildspec: phases.build.commands invokes " + SCANNER,
+          )
+          nonempty_list(bs, "buildspec", "artifacts.files")
+
+          wf = load("codecatalyst/workflows/trustabl.yaml")
+          present(wf, "workflow", "Name")
+          present(wf, "workflow", "SchemaVersion")
+          present(wf, "workflow", "Actions.Trustabl_Scan.Identifier")
+          steps = nonempty_list(wf, "workflow", "Actions.Trustabl_Scan.Configuration.Steps")
+          check(
+              any(SCANNER in str(s.get("Run", "")) for s in steps if isinstance(s, dict)),
+              "workflow: Actions.Trustabl_Scan.Configuration.Steps runs " + SCANNER,
+          )
+          check(
+              isinstance(dig(wf, "Actions.Trustabl_Scan.Outputs"), dict),
+              "workflow: Actions.Trustabl_Scan.Outputs is a mapping",
+          )
+          artifacts = nonempty_list(wf, "workflow", "Actions.Trustabl_Scan.Outputs.Artifacts")
+          check(
+              all(
+                  isinstance(a, dict) and isinstance(a.get("Files"), list) and a["Files"]
+                  for a in artifacts
+              ),
+              "workflow: every Outputs.Artifacts entry has a non-empty Files list",
+          )
+
+          if failures:
+              print("")
+              print(str(len(failures)) + " check(s) failed.")
+              sys.exit(1)
+          print("")
+          print("All structural checks passed.")
+          PY
