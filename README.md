@@ -33,13 +33,15 @@ covers how to trial it and how to read what it reports.
 | `TARGET` | `.` | Path or GitHub URL to scan. |
 | `VERSION` | `latest` | trustabl release tag (e.g. `v0.1.7`) or `latest`. A pin without the `v` (`0.1.7`) is accepted. |
 | `DETECTORS` | _(all)_ | Comma-separated SDK subset (`claude_sdk,openai_sdk,google_adk,...`). |
+| `BRANCH` | _(detected)_ | Branch label for the report. **Set this on CodePipeline** — see below. |
+| `DEBUG` | `false` | `true` turns on `set -x` command tracing. |
 | `STRICT` | `false` | Fail on any finding of `low` or above (`info` never gates), and on a scan that found no agent surfaces at all. |
 | `RULES_REF` | _(default)_ | Pin a `trustabl-rules` git ref. |
 | `RULES_REPO` | _(default)_ | Override the `trustabl-rules` source repo. |
 | `SARIF_FILE` | `trustabl.sarif` | SARIF output path. |
 | `JSON_FILE` | `trustabl.json` | JSON ScanResult output path. |
 | `RISK_SCORE_THRESHOLD` | `0` | Fail when risk (100 − readiness) >= N. `0` disables. |
-| `SEVERITY_THRESHOLD` | `none` | Fail when any finding >= severity (`none/low/medium/high/critical`). |
+| `SEVERITY_THRESHOLD` | `none` | Fail when any finding >= severity (`none/info/low/medium/high/critical`). |
 | `GITHUB_TOKEN` | _(none)_ | Optional — avoids GitHub's 60 req/hr anonymous rate limit. |
 | `REPORT_ONLY` | `false` | Scan and publish artifacts without gating. Scanner errors (exit 2) still fail the build. |
 | `SECURITY_HUB` | `false` | Import ASFF findings into AWS Security Hub (`securityhub:BatchImportFindings`). |
@@ -51,6 +53,16 @@ covers how to trial it and how to read what it reports.
 (`TRUSTABL_READINESS_SCORE`, `TRUSTABL_RISK_SCORE`, `TRUSTABL_MAX_SEVERITY`,
 `TRUSTABL_FINDINGS_COUNT`, `TRUSTABL_EXIT_CODE`), and `trustabl.asff.json` (ASFF
 for Security Hub).
+
+## Why `BRANCH` matters on CodePipeline
+
+The script tries three ways to work out the branch and repository, and on
+CodePipeline all three miss. `CODEBUILD_WEBHOOK_HEAD_REF` is set only for
+*webhook* events; `CODEBUILD_SOURCE_REPO_URL` "may be empty" when the build
+originates from CodePipeline; and a pipeline source artifact is an unzipped
+snapshot with no `.git` for the final fallback. Every report then reads
+`Repository: .` / `Branch: unknown`. Set `BRANCH` explicitly to get a real
+label.
 
 ## A note on "AWS Marketplace"
 
