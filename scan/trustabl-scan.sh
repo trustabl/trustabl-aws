@@ -204,7 +204,21 @@ if [ -z "$EXPECTED" ]; then
   exit 2
 fi
 
-ACTUAL=$(sha256sum "$DEST/$ASSET" | awk '{print $1}')
+# macOS and BSD ship shasum (and openssl), not sha256sum. Calling the missing
+# command inside a pipeline only writes to stderr -- the pipeline's status is
+# awk's, so set -e does not fire, ACTUAL comes back empty, and the compare below
+# reports a "Checksum mismatch": a tamper alarm for what is really a missing tool.
+if   command -v sha256sum >/dev/null 2>&1; then ACTUAL=$(sha256sum "$DEST/$ASSET" | awk '{print $1}')
+elif command -v shasum    >/dev/null 2>&1; then ACTUAL=$(shasum -a 256 "$DEST/$ASSET" | awk '{print $1}')
+elif command -v openssl   >/dev/null 2>&1; then ACTUAL=$(openssl dgst -sha256 "$DEST/$ASSET" | awk '{print $NF}')
+else
+  echo "No sha256 tool (sha256sum, shasum, or openssl) found; refusing to run an unverified trustabl binary." >&2
+  exit 2
+fi
+if [ -z "$ACTUAL" ]; then
+  echo "Could not compute a checksum for $ASSET; refusing to run an unverified trustabl binary." >&2
+  exit 2
+fi
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "Checksum mismatch for $ASSET: expected $EXPECTED, got $ACTUAL" >&2
   exit 2
