@@ -1,0 +1,99 @@
+{
+  "scan_id": "scan_6aeb2293a4cb95a4",
+  "repo": "testdata/clean",
+  "languages": [
+    "python"
+  ],
+  "sdks": null,
+  "has_shell_invocations": true,
+  "manifest": {
+    "repo_root": "/src/testdata/clean",
+    "is_remote": false,
+    "python_files": [
+      "agent.py"
+    ],
+    "yaml_files": [],
+    "has_claude_sdk_dependency": false,
+    "has_openshell_artifact": false,
+    "components": [
+      {
+        "kind": "dependency_manifest",
+        "path": "requirements.txt",
+        "language": "python"
+      }
+    ]
+  },
+  "tools": [
+    {
+      "name": "run_shell",
+      "kind": "shell_invocation",
+      "language": "python",
+      "file_path": "agent.py",
+      "start_line": 6,
+      "end_line": 8,
+      "description": "Run a shell command and return its output.",
+      "has_typed_params": true,
+      "param_names": [
+        "cmd"
+      ],
+      "facts": {
+        "shells_out": "true"
+      }
+    }
+  ],
+  "agents": null,
+  "hosted_tools": null,
+  "mcp_servers": null,
+  "subagents": null,
+  "skills": null,
+  "dependencies": [
+    {
+      "name": "anthropic",
+      "ecosystem": "pypi",
+      "source": "requirements.txt",
+      "start_line": 1,
+      "end_line": 1
+    },
+    {
+      "name": "requests",
+      "ecosystem": "pypi",
+      "source": "requirements.txt",
+      "start_line": 2,
+      "end_line": 2
+    }
+  ],
+  "slash_commands": null,
+  "plugin_manifests": null,
+  "claude_settings": null,
+  "findings": null,
+  "surfaces": [
+    {
+      "kind": "tool",
+      "name": "run_shell",
+      "file_path": "agent.py",
+      "score": 1,
+      "finding_count": 0,
+      "weighted_severity": 0
+    }
+  ],
+  "overall_score": 1,
+  "projected_scores": {
+    "fix_critical": 1,
+    "fix_high": 1,
+    "fix_medium": 1,
+    "fix_low": 1,
+    "fix_all": 1
+  },
+  "rules_source": "https://github.com/trustabl/trustabl-rules",
+  "rules_version": "3dcf1e9c8796bdb8408e91707d7799388c291bac4b17321030872a0b7fa742bb",
+  "rules_from_cache": false,
+  "rules_schema_version": 14,
+  "rules_origin": {
+    "signed": true,
+    "channel": "production"
+  },
+  "coverage": {
+    "files_parsed": 1,
+    "files_skipped": 0
+  }
+}
