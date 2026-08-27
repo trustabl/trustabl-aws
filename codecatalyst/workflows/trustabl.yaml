@@ -35,6 +35,11 @@ Actions:
       Steps:
         - Run: bash scan/trustabl-scan.sh
     Outputs:
+      # Auto-discovery defaults to Enabled: true and inspects every file the
+      # action generates, so leaving it on would report trustabl.sarif a second
+      # time alongside the manual report below.
+      AutoDiscoverReports:
+        Enabled: false
       Artifacts:
         - Name: trustabl-results
           Files:
@@ -44,8 +49,9 @@ Actions:
             - trustabl.env
             - trustabl.asff.json
       # Surfaces findings in the CodeCatalyst Reports tab.
-      # NOTE: verify the SARIF report Format enum against current CodeCatalyst
-      # docs before relying on it (the schema evolves).
+      # SARIFSCA is the only SARIF value CodeCatalyst accepts in the YAML editor
+      # ("For SARIF, specify SARIF (visual editor) or SARIFSCA (YAML editor)").
+      # https://docs.aws.amazon.com/codecatalyst/latest/userguide/build-action-ref.html
       Reports:
         trustabl-sarif:
           Format: SARIFSCA

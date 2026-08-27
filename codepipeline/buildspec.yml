@@ -13,6 +13,8 @@ version: 0.2
 #   TARGET (default "."), VERSION (default "latest"), DETECTORS, STRICT,
 #   RULES_REF, RULES_REPO, SARIF_FILE, JSON_FILE,
 #   RISK_SCORE_THRESHOLD (default 0), SEVERITY_THRESHOLD (default none),
+#   BRANCH (report label; CodePipeline checkouts often have no .git),
+#   DEBUG (set -x; do not enable with GITHUB_TOKEN — it echoes the header),
 #   GITHUB_TOKEN (optional — dodges GitHub's 60 req/hr anon rate limit),
 #   REPORT_ONLY (default false — scan without gating; scanner errors still fail),
 #   SECURITY_HUB (default false — import findings into AWS Security Hub).
@@ -27,8 +29,12 @@ env:
 phases:
   install:
     commands:
-      - command -v jq   >/dev/null 2>&1 || { yum -y install jq   || (apt-get update && apt-get -y install jq);   } >/dev/null 2>&1 || true
-      - command -v curl >/dev/null 2>&1 || { yum -y install curl || (apt-get update && apt-get -y install curl); } >/dev/null 2>&1 || true
+      # Fail the install phase if a missing tool cannot be installed. Swallowing
+      # that with `|| true` left the scan to die later on a confusing jq/curl
+      # error, or — if the script's own fallbacks also fail — to report a score
+      # from a run that never started.
+      - command -v jq   >/dev/null 2>&1 || yum -y install jq   || (apt-get update && apt-get -y install jq)
+      - command -v curl >/dev/null 2>&1 || yum -y install curl || (apt-get update && apt-get -y install curl)
   build:
     commands:
       - bash "$CODEBUILD_SRC_DIR/scan/trustabl-scan.sh"

@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The scanner targets Linux and macOS, so both get exercised. jq is
+        # preinstalled on both runner images, as it is on the CodeBuild
+        # standard images the buildspec documents.
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tool versions
+        run: |
+          bash --version | head -1
+          jq --version
+      - name: Run the scanner test suite
+        run: bash test/run-tests.sh
