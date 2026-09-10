@@ -36,8 +36,8 @@ covers how to trial it and how to read what it reports.
 | `BRANCH` | _(detected)_ | Branch label for the report. **Set this on CodePipeline** — see below. |
 | `DEBUG` | `false` | `true` turns on `set -x` command tracing. |
 | `STRICT` | `false` | Fail on any finding of `low` or above (`info` never gates), and on a scan that found no agent surfaces at all. |
-| `RULES_REF` | _(default)_ | Pin a `trustabl-rules` git ref. |
-| `RULES_REPO` | _(default)_ | Override the `trustabl-rules` source repo. |
+| `RULES_REF` | _(default)_ | Pin an `agent-reliability-rules` git ref. |
+| `RULES_REPO` | _(default)_ | Override the `agent-reliability-rules` source repo. |
 | `SARIF_FILE` | `trustabl.sarif` | SARIF output path. |
 | `JSON_FILE` | `trustabl.json` | JSON ScanResult output path. |
 | `RISK_SCORE_THRESHOLD` | `0` | Fail when risk (100 − readiness) >= N. `0` disables. |
