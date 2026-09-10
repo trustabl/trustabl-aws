@@ -127,7 +127,7 @@ echo "Trustabl scanning branch: $BR"
 # ---- resolve version ----
 VER="$VERSION"
 if [ "$VER" = "latest" ]; then
-  VER=$(curl -sSL "${AUTH[@]}" https://api.github.com/repos/trustabl/trustabl/releases/latest | jq -r '.tag_name // empty')
+  VER=$(curl -sSL "${AUTH[@]}" https://api.github.com/repos/trustabl/agent-reliability-analyzer/releases/latest | jq -r '.tag_name // empty')
 fi
 if [ -z "$VER" ] || [ "$VER" = "null" ]; then
   echo "Could not resolve trustabl version. Pin 'VERSION' to a tag, or set GITHUB_TOKEN."
@@ -176,10 +176,10 @@ else
 fi
 mkdir -p "$DEST"
 # The release download URL (Accept: application/octet-stream) increments the
-# upstream trustabl/trustabl per-asset download_count.
+# upstream trustabl/agent-reliability-analyzer per-asset download_count.
 curl -fSL -H "Accept: application/octet-stream" "${AUTH[@]}" \
   -o "$DEST/$ASSET" \
-  "https://github.com/trustabl/trustabl/releases/download/${VER}/${ASSET}"
+  "https://github.com/trustabl/agent-reliability-analyzer/releases/download/${VER}/${ASSET}"
 
 # ---- verify checksum (sha256 against the release checksums.txt) ----
 # Verification is mandatory. As a warning it skipped exactly the cases that
@@ -191,7 +191,7 @@ curl -fSL -H "Accept: application/octet-stream" "${AUTH[@]}" \
 # docs/EVALUATION.md the scan did not complete and its output should not be
 # trusted. A checksum mismatch exits 2 for the same reason.
 if ! curl -fsSL "${AUTH[@]}" -o "$DEST/checksums.txt" \
-     "https://github.com/trustabl/trustabl/releases/download/${VER}/checksums.txt"; then
+     "https://github.com/trustabl/agent-reliability-analyzer/releases/download/${VER}/checksums.txt"; then
   echo "Could not fetch checksums.txt for ${VER}; refusing to run an unverified trustabl binary." >&2
   exit 2
 fi
