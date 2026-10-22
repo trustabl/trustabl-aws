@@ -2,7 +2,8 @@
 
 Catch AI-agent reliability issues before they ship, inside AWS CI/CD. Scans
 agent repos built on the Claude Agent SDK, OpenAI Agents SDK, Google ADK,
-LangChain, CrewAI, and MCP. Downloads the upstream `trustabl` release binary
+LangChain, LangGraph, CrewAI, AutoGen, AG2, Pydantic AI, Vercel AI SDK, and MCP.
+Downloads the upstream `trustabl` release binary
 (sha256-verified), prints a readiness report, emits `trustabl.json` +
 `trustabl.sarif`, and gates the build on risk and severity.
 
