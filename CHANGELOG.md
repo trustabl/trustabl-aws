@@ -6,7 +6,21 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **`VERSION` now defaults to trustabl `v0.1.16` instead of `latest`** in the
+  scanner, the CodePipeline buildspec and the CodeCatalyst workflow. A new
+  trustabl release no longer changes a pipeline's results on its own; the pin
+  moves only in a reviewed pull request. The download is still sha256-verified
+  against the release `checksums.txt`. `VERSION=latest`, or any explicit
+  `VERSION`, keeps working as before.
+
 ### Added
+
+- `engine-bump` workflow (weekly and on demand): opens a pull request that moves
+  the default pin when a newer trustabl release exists. It never merges.
+- Tests that an unset `VERSION` downloads the pinned release without querying
+  `releases/latest`, and that the buildspec and workflow pins match the scanner.
 
 - `REPORT_ONLY=true` for evaluation-guide trials: publishes artifacts without
   gating, but still fails on scanner errors (exit 2). Replaces the documented

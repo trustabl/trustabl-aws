@@ -29,8 +29,9 @@ Actions:
       Variables:
         - Name: TARGET
           Value: "."
+        # Exact trustabl release; "latest" runs the newest release at run time.
         - Name: VERSION
-          Value: "latest"
+          Value: "v0.1.16"
         - Name: SEVERITY_THRESHOLD
           Value: "none"
         - Name: RISK_SCORE_THRESHOLD

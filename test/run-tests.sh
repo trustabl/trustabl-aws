@@ -174,6 +174,35 @@ test_a_pinned_version_skips_the_latest_lookup() {
   assert_contains "report" "$SCAN_OUT" "Trustabl version: $TEST_VERSION"
 }
 
+# The release the scanner runs when VERSION is unset.
+default_version() {
+  sed -n 's/^DEFAULT_VERSION="\(.*\)"$/\1/p' "$SCANNER"
+}
+
+test_an_unset_version_runs_the_pinned_release() {
+  local pinned; pinned="$(default_version)"
+  if ! [[ "$pinned" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail "DEFAULT_VERSION '$pinned' is not an exact release tag"
+    return
+  fi
+  # Build this workspace's release under the pinned version, then blank VERSION
+  # so the scanner's own default applies.
+  local TEST_VERSION="$pinned"
+  local ws; ws="$(workspace)"
+  run_scan "$ws" VERSION= STUB_CURL_LOG="$ws/curl.log"
+  assert_eq "exit code" "$SCAN_EXIT" 0
+  assert_contains "report" "$SCAN_OUT" "Trustabl version: $pinned"
+  assert_contains "report" "$SCAN_OUT" "checksum verified"
+  assert_contains "curl log" "$(cat "$ws/curl.log")" "/releases/download/$pinned/"
+  assert_not_contains "curl log" "$(cat "$ws/curl.log")" "releases/latest"
+}
+
+test_the_buildspec_and_workflow_match_the_scanner_pin() {
+  local pinned; pinned="$(default_version)"
+  assert_contains "buildspec" "$(cat "$REPO_ROOT/codepipeline/buildspec.yml")" "VERSION: \"$pinned\""
+  assert_contains "workflow" "$(grep -A1 'Name: VERSION' "$REPO_ROOT/codecatalyst/workflows/trustabl.yaml")" "Value: \"$pinned\""
+}
+
 test_the_branch_label_is_reported() {
   local ws; ws="$(workspace)"
   run_scan "$ws" BRANCH=release/1.2
@@ -215,6 +244,8 @@ it "a tampered release aborts before the engine runs"           test_a_tampered_
 it "an unfetchable checksums.txt aborts"                        test_an_unfetchable_checksums_file_aborts
 it "an asset missing from checksums.txt aborts"                 test_an_asset_missing_from_checksums_aborts
 it "a pinned VERSION skips the latest-release lookup"           test_a_pinned_version_skips_the_latest_lookup
+it "an unset VERSION runs the pinned default release"           test_an_unset_version_runs_the_pinned_release
+it "the buildspec and workflow pin the scanner's default"       test_the_buildspec_and_workflow_match_the_scanner_pin
 it "the branch label is reported"                               test_the_branch_label_is_reported
 it "an empty ScanResult is not scored"                          test_an_empty_scan_result_is_not_scored
 it "a truncated ScanResult is not scored"                       test_a_truncated_scan_result_is_not_scored

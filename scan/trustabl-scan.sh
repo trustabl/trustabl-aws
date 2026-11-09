@@ -16,8 +16,14 @@
 #   BRANCH GITHUB_TOKEN DEBUG REPORT_ONLY SECURITY_HUB TRUSTABL_BIN_DIR
 
 # ---- inputs (env, with defaults) ----
+# The trustabl release to run when VERSION is unset. Pinned rather than "latest"
+# so a new release cannot change a pipeline's results until this pin moves; the
+# engine-bump workflow opens that pull request. VERSION=latest still opts into
+# the newest release. The buildspec and CodeCatalyst workflow repeat this value,
+# and test/run-tests.sh checks they agree.
+DEFAULT_VERSION="v0.1.16"
 TARGET="${TARGET:-.}"
-VERSION="${VERSION:-latest}"
+VERSION="${VERSION:-$DEFAULT_VERSION}"
 DETECTORS="${DETECTORS:-}"
 STRICT="${STRICT:-false}"
 RULES_REF="${RULES_REF:-}"

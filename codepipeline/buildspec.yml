@@ -10,7 +10,8 @@ version: 0.2
 # (the buildspec runs `scan/trustabl-scan.sh` from the source checkout).
 #
 # Inputs are environment variables (set on the CodeBuild project or action):
-#   TARGET (default "."), VERSION (default "latest"), DETECTORS, STRICT,
+#   TARGET (default "."), VERSION (default the pinned "v0.1.16"; "latest" for
+#   the newest release at run time), DETECTORS, STRICT,
 #   RULES_REF, RULES_REPO, SARIF_FILE, JSON_FILE,
 #   RISK_SCORE_THRESHOLD (default 0), SEVERITY_THRESHOLD (default none),
 #   BRANCH (report label; CodePipeline checkouts often have no .git),
@@ -22,7 +23,7 @@ version: 0.2
 env:
   variables:
     TARGET: "."
-    VERSION: "latest"
+    VERSION: "v0.1.16"
     SEVERITY_THRESHOLD: "none"
     RISK_SCORE_THRESHOLD: "0"
 

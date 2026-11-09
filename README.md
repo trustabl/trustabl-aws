@@ -32,7 +32,7 @@ covers how to trial it and how to read what it reports.
 | Var | Default | Description |
 |---|---|---|
 | `TARGET` | `.` | Path or GitHub URL to scan. |
-| `VERSION` | `latest` | trustabl release tag (e.g. `v0.1.7`) or `latest`. A pin without the `v` (`0.1.7`) is accepted. |
+| `VERSION` | `v0.1.16` | trustabl release to run: an exact tag, or `latest` for the newest release at run time. A pin without the `v` is accepted. See [Engine version](#engine-version). |
 | `DETECTORS` | _(all)_ | Comma-separated SDK subset (`claude_sdk,openai_sdk,google_adk,...`). |
 | `BRANCH` | _(detected)_ | Branch label for the report. **Set this on CodePipeline** — see below. |
 | `DEBUG` | `false` | `true` turns on `set -x` command tracing. |
@@ -54,6 +54,17 @@ covers how to trial it and how to read what it reports.
 (`TRUSTABL_READINESS_SCORE`, `TRUSTABL_RISK_SCORE`, `TRUSTABL_MAX_SEVERITY`,
 `TRUSTABL_FINDINGS_COUNT`, `TRUSTABL_EXIT_CODE`), and `trustabl.asff.json` (ASFF
 for Security Hub).
+
+## Engine version
+
+By default the scanner runs one exact trustabl release, `v0.1.16`, and checks
+its sha256 against that release's `checksums.txt` before running it. A new
+trustabl release does not change your results until this repository moves the
+pin (each move is a reviewed pull request) and you re-vendor the files.
+
+- Keep the default: leave `VERSION` as it is in the buildspec or workflow.
+- Always run the newest release: `VERSION=latest` (the default before the pin).
+- Run a specific release: `VERSION=v0.1.15`.
 
 ## Why `BRANCH` matters on CodePipeline
 
