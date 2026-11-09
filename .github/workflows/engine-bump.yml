@@ -1,0 +1,105 @@
+# Opens a pull request when trustabl publishes a release newer than the one the
+# scanner pins as its VERSION default.
+#
+# The default is pinned so a trustabl release cannot change users' results by
+# itself. The cost of a pin is remembering to move it; this workflow does the
+# remembering. Nothing changes for users until a human merges the pull request.
+#
+# Needs Settings -> Actions -> General -> "Allow GitHub Actions to create and
+# approve pull requests". Pull requests opened with GITHUB_TOKEN do not trigger
+# other workflows, so close and reopen the pull request to run CI on it.
+name: engine-bump
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'     # Mondays, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT=$(sed -n 's/^DEFAULT_VERSION="\(.*\)"$/\1/p' scan/trustabl-scan.sh)
+          LATEST=$(gh api repos/trustabl/agent-reliability-analyzer/releases/latest --jq .tag_name)
+          if [ -z "$CURRENT" ] || [ -z "$LATEST" ]; then
+            echo "::error::could not read the pinned ($CURRENT) or latest ($LATEST) trustabl version"
+            exit 1
+          fi
+          NEWEST=$(printf '%s\n%s\n' "$CURRENT" "$LATEST" | sort -V | tail -n1)
+          BUMP=false
+          if [ "$CURRENT" != "$LATEST" ] && [ "$NEWEST" = "$LATEST" ]; then BUMP=true; fi
+          {
+            echo "current=$CURRENT"
+            echo "latest=$LATEST"
+            echo "bump=$BUMP"
+          } >> "$GITHUB_OUTPUT"
+          echo "Pinned $CURRENT, latest $LATEST, bump: $BUMP"
+
+      # The scanner refuses to run a binary it cannot verify, so a pin to a
+      # release without a complete checksums.txt would break every default run.
+      - name: Check the release is verifiable
+        if: steps.versions.outputs.bump == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LATEST: ${{ steps.versions.outputs.latest }}
+        run: |
+          gh release download "$LATEST" -R trustabl/agent-reliability-analyzer \
+            -p checksums.txt -O "$RUNNER_TEMP/checksums.txt"
+          V="${LATEST#v}"
+          for asset in "trustabl_${V}_linux_amd64.tar.gz" "trustabl_${V}_linux_arm64.tar.gz" \
+                       "trustabl_${V}_darwin_amd64.tar.gz" "trustabl_${V}_darwin_arm64.tar.gz"; do
+            if ! awk -v a="$asset" '$2 == a { found = 1 } END { exit !found }' "$RUNNER_TEMP/checksums.txt"; then
+              echo "::error::$asset is not listed in checksums.txt for $LATEST"
+              exit 1
+            fi
+          done
+
+      - name: Move the pin
+        if: steps.versions.outputs.bump == 'true'
+        env:
+          CURRENT: ${{ steps.versions.outputs.current }}
+          LATEST: ${{ steps.versions.outputs.latest }}
+        run: |
+          OLD=$(printf '%s' "$CURRENT" | sed 's/\./\\./g')
+          sed -i "s/${OLD}\b/${LATEST}/g" scan/trustabl-scan.sh codepipeline/buildspec.yml \
+            codecatalyst/workflows/trustabl.yaml README.md
+          grep -q "^DEFAULT_VERSION=\"${LATEST}\"$" scan/trustabl-scan.sh
+
+      # CI does not run on a pull request opened by this workflow until someone
+      # reopens it, so run the suite (including the pin-agreement test) here.
+      - name: Run the scanner test suite
+        if: steps.versions.outputs.bump == 'true'
+        run: bash test/run-tests.sh
+
+      - uses: peter-evans/create-pull-request@v7
+        if: steps.versions.outputs.bump == 'true'
+        with:
+          branch: chore/engine-${{ steps.versions.outputs.latest }}
+          title: "chore: default to trustabl ${{ steps.versions.outputs.latest }}"
+          commit-message: "chore: default to trustabl ${{ steps.versions.outputs.latest }}"
+          body: |
+            trustabl released `${{ steps.versions.outputs.latest }}`; the scanner pins
+            `${{ steps.versions.outputs.current }}` as its `VERSION` default.
+
+            This moves the default in `scan/trustabl-scan.sh`, `codepipeline/buildspec.yml`,
+            `codecatalyst/workflows/trustabl.yaml` and the README. The release's
+            `checksums.txt` lists every Linux and macOS asset the scanner downloads, and
+            `test/run-tests.sh` passed in the workflow run that opened this pull request.
+
+            Before merging:
+            - Read the trustabl release notes. A release that changes scan output may need
+              scanner changes in the same pull request.
+            - Close and reopen this pull request so CI and Lint run on it.
+
+            Users vendor these files, so a merge reaches them when they next copy the
+            scanner or wrappers from `main`.
